@@ -1,0 +1,728 @@
+{
+  "GET http://localhost:8081/products": {
+    "Method": "GET",
+    "URL": "http://localhost:8081/products",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept": [
+          "*/*"
+        ],
+        "Accept-Encoding": [
+          "gzip"
+        ],
+        "User-Agent": [
+          "curl/8.7.1",
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept": true,
+        "Accept-Encoding": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {},
+      "Optional": {}
+    },
+    "ResponseStatuses": {
+      "200": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "232",
+              "232"
+            ],
+            "Content-Type": [
+              "application/json",
+              "application/json"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:39:18 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true
+          }
+        },
+        "Payload": {
+          "Examples": {
+            "[].category": [
+              "Electronics",
+              "Footwear",
+              "",
+              "Electronics",
+              "Footwear",
+              ""
+            ],
+            "[].id": [
+              1,
+              2,
+              6972,
+              1,
+              2,
+              6972
+            ],
+            "[].in_stock": [
+              true,
+              true,
+              false,
+              true,
+              true,
+              false
+            ],
+            "[].name": [
+              "Laptop",
+              "Sneakers",
+              "Test",
+              "Laptop",
+              "Sneakers",
+              "Test"
+            ],
+            "[].price": [
+              1299.99,
+              89.99,
+              123,
+              1299.99,
+              89.99,
+              123
+            ]
+          },
+          "Optional": {
+            "[].category": true,
+            "[].id": true,
+            "[].in_stock": true,
+            "[].name": true,
+            "[].price": true
+          }
+        }
+      }
+    }
+  },
+  "GET http://localhost:8081/users": {
+    "Method": "GET",
+    "URL": "http://localhost:8081/users",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {},
+      "Optional": {}
+    },
+    "ResponseStatuses": {
+      "200": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "102"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true
+          }
+        },
+        "Payload": {
+          "Examples": {
+            "[].email": [
+              "alice@example.com",
+              "bob@example.com"
+            ],
+            "[].id": [
+              1,
+              2
+            ],
+            "[].name": [
+              "Alice",
+              "Bob"
+            ]
+          },
+          "Optional": {
+            "[].email": true,
+            "[].id": true,
+            "[].name": true
+          }
+        }
+      }
+    }
+  },
+  "GET http://localhost:8081/users/1": {
+    "Method": "GET",
+    "URL": "http://localhost:8081/users/1",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {},
+      "Optional": {}
+    },
+    "ResponseStatuses": {
+      "200": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "52"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true
+          }
+        },
+        "Payload": {
+          "Examples": {
+            "email": [
+              "alice@example.com"
+            ],
+            "id": [
+              1
+            ],
+            "name": [
+              "Alice"
+            ]
+          },
+          "Optional": {
+            "email": true,
+            "id": true,
+            "name": true
+          }
+        }
+      }
+    }
+  },
+  "POST http://localhost:8081/orders": {
+    "Method": "POST",
+    "URL": "http://localhost:8081/orders",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip",
+          "gzip",
+          "gzip"
+        ],
+        "Content-Length": [
+          "41",
+          "130",
+          "129"
+        ],
+        "Content-Type": [
+          "application/json",
+          "application/json",
+          "application/json"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1",
+          "Go-http-client/1.1",
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "Content-Length": true,
+        "Content-Type": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {
+        "notes": [
+          "Gift wrapping requested"
+        ],
+        "priority": [
+          true
+        ],
+        "product_id": [
+          1,
+          2,
+          1
+        ],
+        "quantity": [
+          2,
+          1,
+          3
+        ],
+        "shipping.address": [
+          "123 Main St",
+          "456 Oak Ave"
+        ],
+        "shipping.city": [
+          "New York",
+          "Los Angeles"
+        ],
+        "shipping.zip": [
+          "90001"
+        ],
+        "user_id": [
+          1,
+          2,
+          3
+        ]
+      },
+      "Optional": {
+        "notes": true,
+        "priority": true,
+        "product_id": true,
+        "quantity": true,
+        "shipping.address": true,
+        "shipping.city": true,
+        "shipping.zip": true,
+        "user_id": true
+      }
+    },
+    "ResponseStatuses": {
+      "200": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "116",
+              "114",
+              "127"
+            ],
+            "Content-Type": [
+              "application/json",
+              "application/json",
+              "application/json"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true
+          }
+        },
+        "Payload": {
+          "Examples": {
+            "created_at": [
+              "2025-05-04T23:42:07.337382-07:00",
+              "2025-05-04T23:42:07.337878-07:00",
+              "2025-05-04T23:42:07.338319-07:00"
+            ],
+            "id": [
+              1225,
+              7902,
+              6658
+            ],
+            "product_id": [
+              1,
+              2,
+              1
+            ],
+            "quantity": [
+              2,
+              1,
+              3
+            ],
+            "total": [
+              2599.98,
+              89.99,
+              3899.9700000000003
+            ],
+            "user_id": [
+              1,
+              2,
+              3
+            ]
+          },
+          "Optional": {
+            "created_at": true,
+            "id": true,
+            "product_id": true,
+            "quantity": true,
+            "total": true,
+            "user_id": true
+          }
+        }
+      }
+    }
+  },
+  "POST http://localhost:8081/products": {
+    "Method": "POST",
+    "URL": "http://localhost:8081/products",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept": [
+          "*/*"
+        ],
+        "Accept-Encoding": [
+          "gzip",
+          "gzip",
+          "gzip"
+        ],
+        "Content-Length": [
+          "27",
+          "72",
+          "106",
+          "86"
+        ],
+        "Content-Type": [
+          "application/json",
+          "application/json",
+          "application/json",
+          "application/json"
+        ],
+        "User-Agent": [
+          "curl/8.7.1",
+          "Go-http-client/1.1",
+          "Go-http-client/1.1",
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept": true,
+        "Accept-Encoding": true,
+        "Content-Length": true,
+        "Content-Type": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {
+        "category": [
+          "Electronics",
+          "Electronics",
+          "Audio"
+        ],
+        "color": [
+          "Black"
+        ],
+        "description": [
+          "Latest model"
+        ],
+        "inStock": [
+          true,
+          false,
+          true
+        ],
+        "name": [
+          "Test",
+          "Laptop",
+          "Smartphone",
+          "Headphones"
+        ],
+        "price": [
+          123,
+          999.99,
+          699.99,
+          199.99
+        ]
+      },
+      "Optional": {
+        "category": true,
+        "color": true,
+        "description": true,
+        "inStock": true,
+        "name": true,
+        "price": true
+      }
+    },
+    "ResponseStatuses": {
+      "200": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "69",
+              "85",
+              "89",
+              "83"
+            ],
+            "Content-Type": [
+              "application/json",
+              "application/json",
+              "application/json",
+              "application/json"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:39:18 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true
+          }
+        },
+        "Payload": {
+          "Examples": {
+            "category": [
+              "",
+              "Electronics",
+              "Electronics",
+              "Audio"
+            ],
+            "id": [
+              6972,
+              8250,
+              1172,
+              2837
+            ],
+            "in_stock": [
+              false,
+              false,
+              false,
+              false
+            ],
+            "name": [
+              "Test",
+              "Laptop",
+              "Smartphone",
+              "Headphones"
+            ],
+            "price": [
+              123,
+              999.99,
+              699.99,
+              199.99
+            ]
+          },
+          "Optional": {
+            "category": true,
+            "id": true,
+            "in_stock": true,
+            "name": true,
+            "price": true
+          }
+        }
+      }
+    }
+  },
+  "POST http://localhost:8081/users": {
+    "Method": "POST",
+    "URL": "http://localhost:8081/users",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip",
+          "gzip"
+        ],
+        "Content-Length": [
+          "55",
+          "2"
+        ],
+        "Content-Type": [
+          "application/json"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1",
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "Content-Length": true,
+        "Content-Type": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {
+        "age": [
+          30
+        ],
+        "email": [
+          "john@example.com"
+        ],
+        "name": [
+          "John Doe"
+        ]
+      },
+      "Optional": {
+        "age": true,
+        "email": true,
+        "name": true
+      }
+    },
+    "ResponseStatuses": {
+      "405": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "19",
+              "19"
+            ],
+            "Content-Type": [
+              "text/plain; charset=utf-8",
+              "text/plain; charset=utf-8"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT",
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ],
+            "X-Content-Type-Options": [
+              "nosniff",
+              "nosniff"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true,
+            "X-Content-Type-Options": true
+          }
+        },
+        "Payload": {
+          "Examples": {},
+          "Optional": {}
+        }
+      }
+    }
+  },
+  "PUT http://localhost:8081/orders": {
+    "Method": "PUT",
+    "URL": "http://localhost:8081/orders",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip"
+        ],
+        "Content-Length": [
+          "2"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "Content-Length": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {},
+      "Optional": {}
+    },
+    "ResponseStatuses": {
+      "405": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "19"
+            ],
+            "Content-Type": [
+              "text/plain; charset=utf-8"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ],
+            "X-Content-Type-Options": [
+              "nosniff"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true,
+            "X-Content-Type-Options": true
+          }
+        },
+        "Payload": {
+          "Examples": {},
+          "Optional": {}
+        }
+      }
+    }
+  },
+  "PUT http://localhost:8081/products/1": {
+    "Method": "PUT",
+    "URL": "http://localhost:8081/products/1",
+    "RequestHeaders": {
+      "Examples": {
+        "Accept-Encoding": [
+          "gzip"
+        ],
+        "Content-Length": [
+          "2"
+        ],
+        "User-Agent": [
+          "Go-http-client/1.1"
+        ]
+      },
+      "Optional": {
+        "Accept-Encoding": true,
+        "Content-Length": true,
+        "User-Agent": true
+      }
+    },
+    "RequestPayload": {
+      "Examples": {},
+      "Optional": {}
+    },
+    "ResponseStatuses": {
+      "405": {
+        "Headers": {
+          "Examples": {
+            "Content-Length": [
+              "19"
+            ],
+            "Content-Type": [
+              "text/plain; charset=utf-8"
+            ],
+            "Date": [
+              "Mon, 05 May 2025 06:42:07 GMT"
+            ],
+            "X-Content-Type-Options": [
+              "nosniff"
+            ]
+          },
+          "Optional": {
+            "Content-Length": true,
+            "Content-Type": true,
+            "Date": true,
+            "X-Content-Type-Options": true
+          }
+        },
+        "Payload": {
+          "Examples": {},
+          "Optional": {}
+        }
+      }
+    }
+  }
+}

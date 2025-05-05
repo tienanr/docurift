@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 
+	"github.com/tienanr/docurift/analyzer"
 	"github.com/vulcand/oxy/forward"
 )
 
@@ -27,6 +29,15 @@ func (w *customResponseWriter) Write(b []byte) (int, error) {
 }
 
 func main() {
+	// Initialize analyzer
+	analyzerInstance := analyzer.NewAnalyzer()
+	analyzerServer := analyzer.NewServer(analyzerInstance)
+	go func() {
+		if err := analyzerServer.Start(":8082"); err != nil {
+			log.Fatalf("Failed to start analyzer server: %v", err)
+		}
+	}()
+
 	backendURL, err := url.Parse("http://localhost:8081")
 	if err != nil {
 		log.Fatalf("Invalid backend URL: %v", err)
@@ -38,6 +49,13 @@ func main() {
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Capture request body
+		var reqBody []byte
+		if req.Body != nil {
+			reqBody, _ = io.ReadAll(req.Body)
+			req.Body = io.NopCloser(bytes.NewBuffer(reqBody))
+		}
+
 		req.URL.Scheme = backendURL.Scheme
 		req.URL.Host = backendURL.Host
 
@@ -48,6 +66,19 @@ func main() {
 
 		// Log response after it's been written
 		log.Printf("← Response status: %d\n← Body: %s", crw.statusCode, crw.buf.String())
+
+		// Process request/response with analyzer
+		analyzerInstance.ProcessRequest(
+			req.Method,
+			req.URL.String(),
+			req,
+			&http.Response{
+				StatusCode: crw.statusCode,
+				Header:     crw.Header(),
+			},
+			reqBody,
+			crw.buf.Bytes(),
+		)
 	})
 
 	log.Println("Proxy listening on :8080")

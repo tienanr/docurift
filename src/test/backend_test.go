@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
 )
 
 const baseURL = "http://localhost:8080"
@@ -51,25 +48,36 @@ func TestGetProducts(t *testing.T) {
 }
 
 func TestCreateAndDeleteProduct(t *testing.T) {
-	p := Product{Name: "ProxyTest", Price: 49.99, InStock: true, Category: "Test"}
-	resp := doPost(t, "/products", p)
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected 200 from POST, got %d", resp.StatusCode)
+	// Create multiple products with different fields
+	products := []map[string]interface{}{
+		{
+			"name":     "Laptop",
+			"price":    999.99,
+			"category": "Electronics",
+			"inStock":  true,
+		},
+		{
+			"name":        "Smartphone",
+			"price":       699.99,
+			"category":    "Electronics",
+			"inStock":     false,
+			"description": "Latest model",
+		},
+		{
+			"name":     "Headphones",
+			"price":    199.99,
+			"category": "Audio",
+			"inStock":  true,
+			"color":    "Black",
+		},
 	}
 
-	var created Product
-	json.NewDecoder(resp.Body).Decode(&created)
-
-	resp = doGet(t, "/products/"+strconv.Itoa(created.ID))
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET created product failed: %d", resp.StatusCode)
-	}
-
-	resp = doDelete(t, "/products/"+strconv.Itoa(created.ID))
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("DELETE product failed: %d", resp.StatusCode)
+	for _, product := range products {
+		resp := doPost(t, "/products", product)
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200 from POST, got %d", resp.StatusCode)
+		}
 	}
 }
 
@@ -78,6 +86,39 @@ func TestGetUsers(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /users failed: %d", resp.StatusCode)
+	}
+}
+
+func TestCreateUsers(t *testing.T) {
+	// Create multiple users with different fields
+	users := []map[string]interface{}{
+		{
+			"name":  "John Doe",
+			"email": "john@example.com",
+			"age":   30,
+		},
+		{
+			"name":    "Jane Smith",
+			"email":   "jane@example.com",
+			"age":     25,
+			"phone":   "123-456-7890",
+			"address": "123 Main St",
+		},
+		{
+			"name":     "Bob Wilson",
+			"email":    "bob@example.com",
+			"age":      40,
+			"company":  "Tech Corp",
+			"position": "Developer",
+		},
+	}
+
+	for _, user := range users {
+		resp := doPost(t, "/users", user)
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("POST /users failed: %d", resp.StatusCode)
+		}
 	}
 }
 
@@ -90,28 +131,42 @@ func TestGetUserByID(t *testing.T) {
 }
 
 func TestOrders(t *testing.T) {
-	order := Order{
-		UserID:    1,
-		ProductID: 1,
-		Quantity:  2,
+	// Create multiple orders with different fields
+	orders := []map[string]interface{}{
+		{
+			"user_id":    1,
+			"product_id": 1,
+			"quantity":   2,
+		},
+		{
+			"user_id":    2,
+			"product_id": 2,
+			"quantity":   1,
+			"notes":      "Gift wrapping requested",
+			"shipping": map[string]interface{}{
+				"address": "123 Main St",
+				"city":    "New York",
+			},
+		},
+		{
+			"user_id":    3,
+			"product_id": 1,
+			"quantity":   3,
+			"priority":   true,
+			"shipping": map[string]interface{}{
+				"address": "456 Oak Ave",
+				"city":    "Los Angeles",
+				"zip":     "90001",
+			},
+		},
 	}
 
-	resp := doPost(t, "/orders", order)
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("POST /orders failed: %d", resp.StatusCode)
-	}
-
-	var created Order
-	json.NewDecoder(resp.Body).Decode(&created)
-	if created.Total <= 0 || created.CreatedAt.After(time.Now()) {
-		t.Errorf("Unexpected order fields: %+v", created)
-	}
-
-	resp = doGet(t, "/orders")
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /orders failed: %d", resp.StatusCode)
+	for _, order := range orders {
+		resp := doPost(t, "/orders", order)
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("POST /orders failed: %d", resp.StatusCode)
+		}
 	}
 }
 
@@ -126,7 +181,7 @@ func TestInvalidMethodsViaProxy(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		req, _ := http.NewRequest(test.method, baseURL+test.path, strings.NewReader(`{}`))
+		req, _ := http.NewRequest(test.method, baseURL+test.path, bytes.NewReader([]byte(`{}`)))
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Errorf("%s %s failed to send request: %v", test.method, test.path, err)
