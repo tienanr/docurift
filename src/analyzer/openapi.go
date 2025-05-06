@@ -182,46 +182,143 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 
 // generateSchemaFromStore generates OpenAPI schema from SchemaStore
 func generateSchemaFromStore(store *SchemaStore) Schema {
+	// First pass: collect all paths and their parts
+	paths := make(map[string][]string)
+	for path := range store.Examples {
+		if path == "" {
+			continue
+		}
+		parts := strings.Split(path, ".")
+		paths[path] = parts
+	}
+
+	// If we have array paths, create an array schema
+	if len(paths) > 0 {
+		// Get the first path to check if it's an array
+		var firstPath string
+		for p := range paths {
+			firstPath = p
+			break
+		}
+		parts := strings.Split(firstPath, ".")
+		if strings.HasSuffix(parts[0], "[]") {
+			// Create array schema
+			arraySchema := Schema{
+				Type: "array",
+				Items: &Schema{
+					Type:       "object",
+					Properties: make(map[string]Schema),
+				},
+			}
+
+			// Add properties to the array items schema
+			for path, parts := range paths {
+				fieldName := strings.TrimSuffix(parts[0], "[]")
+				if len(parts) > 1 {
+					fieldName = parts[1]
+				}
+
+				// Create property schema
+				examples := store.Examples[path]
+				if len(examples) > 0 {
+					propertySchema := createPropertySchema(examples)
+					// Add to array items schema
+					arraySchema.Items.Properties[fieldName] = propertySchema
+
+					// Add to required fields if not optional
+					if !store.Optional[path] {
+						arraySchema.Items.Required = append(arraySchema.Items.Required, fieldName)
+					}
+				}
+			}
+
+			return arraySchema
+		}
+	}
+
+	// Handle regular object schema
 	schema := Schema{
 		Type:       "object",
 		Properties: make(map[string]Schema),
 	}
 
-	for path, examples := range store.Examples {
-		// Skip empty paths (root object)
-		if path == "" {
-			continue
+	// Group paths by their first part to handle nested objects
+	groupedPaths := make(map[string]map[string][]string)
+	for _, parts := range paths {
+		firstPart := parts[0]
+		if _, exists := groupedPaths[firstPart]; !exists {
+			groupedPaths[firstPart] = make(map[string][]string)
 		}
-
-		// Determine if field is required
-		if !store.Optional[path] {
-			schema.Required = append(schema.Required, path)
+		// Store the remaining parts for nested objects
+		if len(parts) > 1 {
+			groupedPaths[firstPart][strings.Join(parts[1:], ".")] = parts[1:]
+		} else {
+			groupedPaths[firstPart][""] = parts
 		}
+	}
 
-		// Create schema for the field
-		fieldSchema := Schema{
-			Examples: examples,
-		}
+	// Add properties to the schema
+	for fieldName, nestedPaths := range groupedPaths {
+		// Check if this is a nested object
+		if len(nestedPaths) > 1 || (len(nestedPaths) == 1 && nestedPaths[""] == nil) {
+			// Create a nested object schema
+			nestedSchema := Schema{
+				Type:       "object",
+				Properties: make(map[string]Schema),
+			}
 
-		// Determine type based on examples
-		if len(examples) > 0 {
-			switch examples[0].(type) {
-			case string:
-				fieldSchema.Type = "string"
-			case float64:
-				fieldSchema.Type = "number"
-			case bool:
-				fieldSchema.Type = "boolean"
-			case []interface{}:
-				fieldSchema.Type = "array"
-				fieldSchema.Items = &Schema{Type: "object"}
-			case map[string]interface{}:
-				fieldSchema.Type = "object"
+			// Process nested paths
+			for nestedPath, parts := range nestedPaths {
+				if nestedPath == "" {
+					continue // Skip empty paths
+				}
+				examples := store.Examples[fieldName+"."+nestedPath]
+				if len(examples) > 0 {
+					propertySchema := createPropertySchema(examples)
+					nestedSchema.Properties[parts[0]] = propertySchema
+
+					if !store.Optional[fieldName+"."+nestedPath] {
+						nestedSchema.Required = append(nestedSchema.Required, parts[0])
+					}
+				}
+			}
+
+			schema.Properties[fieldName] = nestedSchema
+		} else {
+			// Handle regular field
+			examples := store.Examples[fieldName]
+			if len(examples) > 0 {
+				propertySchema := createPropertySchema(examples)
+				schema.Properties[fieldName] = propertySchema
+
+				if !store.Optional[fieldName] {
+					schema.Required = append(schema.Required, fieldName)
+				}
 			}
 		}
-
-		schema.Properties[path] = fieldSchema
 	}
 
 	return schema
+}
+
+// createPropertySchema creates a schema for a property based on its examples
+func createPropertySchema(examples []interface{}) Schema {
+	propertySchema := Schema{}
+	if len(examples) > 0 {
+		switch examples[0].(type) {
+		case string:
+			propertySchema.Type = "string"
+		case float64:
+			propertySchema.Type = "number"
+		case bool:
+			propertySchema.Type = "boolean"
+		case []interface{}:
+			propertySchema.Type = "array"
+			propertySchema.Items = &Schema{Type: "object"}
+		case map[string]interface{}:
+			propertySchema.Type = "object"
+		}
+		propertySchema.Examples = examples
+	}
+	return propertySchema
 }
