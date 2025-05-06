@@ -144,16 +144,19 @@ func normalizeURL(url string) string {
 
 // ProcessRequest processes a request and response pair
 func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *http.Response, reqBody, respBody []byte) {
-	// Normalize the URL by removing the host name
-	normalizedURL := normalizeURL(url)
-	key := method + " " + normalizedURL
+	// Skip invalid responses
+	if resp.StatusCode >= 400 {
+		return
+	}
+
+	key := method + " " + url
 
 	a.mu.Lock()
 	endpoint, exists := a.endpoints[key]
 	if !exists {
 		endpoint = &EndpointData{
 			Method:           method,
-			URL:              normalizedURL,
+			URL:              url,
 			RequestHeaders:   NewSchemaStore(),
 			RequestPayload:   NewSchemaStore(),
 			ResponseStatuses: make(map[int]*ResponseData),
