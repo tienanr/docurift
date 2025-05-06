@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 )
@@ -175,9 +176,13 @@ func TestInvalidMethodsViaProxy(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodPost, "/users"},
 		{http.MethodPut, "/orders"},
 		{http.MethodPut, "/products/1"},
+		{http.MethodPatch, "/users/1"},
+		{http.MethodPatch, "/categories/1"},
+		{http.MethodPut, "/reviews/1"},
+		{http.MethodPatch, "/addresses/1"},
+		{http.MethodPut, "/payment-methods/1"},
 	}
 
 	for _, test := range tests {
@@ -191,5 +196,461 @@ func TestInvalidMethodsViaProxy(t *testing.T) {
 			t.Errorf("Expected 405 for %s %s, got %d", test.method, test.path, resp.StatusCode)
 		}
 		resp.Body.Close()
+	}
+}
+
+func TestReviews(t *testing.T) {
+	// Test creating a review
+	review := Review{
+		UserID:       1,
+		ProductID:    1,
+		Rating:       5,
+		Comment:      "Great product!",
+		Title:        "Excellent quality",
+		HelpfulVotes: 10,
+		Metadata: map[string]string{
+			"verified_purchase": "true",
+			"platform":          "web",
+		},
+	}
+	reviewJSON, _ := json.Marshal(review)
+	resp, err := http.Post(baseURL+"/reviews", "application/json", bytes.NewBuffer(reviewJSON))
+	if err != nil {
+		t.Fatalf("Failed to create review: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting reviews
+	resp, err = http.Get(baseURL + "/reviews")
+	if err != nil {
+		t.Fatalf("Failed to get reviews: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestCategories(t *testing.T) {
+	// Test getting categories
+	resp, err := http.Get(baseURL + "/categories")
+	if err != nil {
+		t.Fatalf("Failed to get categories: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test creating a category with optional fields
+	category := Category{
+		Name:        "Books",
+		Description: "Books and publications",
+		ParentID:    1,
+		ImageURL:    "https://example.com/books.jpg",
+		Attributes: map[string]string{
+			"type":   "physical",
+			"format": "paperback",
+		},
+	}
+	categoryJSON, _ := json.Marshal(category)
+	resp, err = http.Post(baseURL+"/categories", "application/json", bytes.NewBuffer(categoryJSON))
+	if err != nil {
+		t.Fatalf("Failed to create category: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestAddresses(t *testing.T) {
+	// Test creating an address with optional fields
+	address := Address{
+		UserID:      1,
+		Street:      "123 Main St",
+		City:        "New York",
+		State:       "NY",
+		Country:     "USA",
+		PostalCode:  "10001",
+		Apartment:   "4B",
+		IsDefault:   true,
+		PhoneNumber: "+1-555-0123",
+	}
+	addressJSON, _ := json.Marshal(address)
+	resp, err := http.Post(baseURL+"/addresses", "application/json", bytes.NewBuffer(addressJSON))
+	if err != nil {
+		t.Fatalf("Failed to create address: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting addresses
+	resp, err = http.Get(baseURL + "/addresses")
+	if err != nil {
+		t.Fatalf("Failed to get addresses: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestPaymentMethods(t *testing.T) {
+	// Test creating a payment method with sensitive data
+	payment := PaymentMethod{
+		UserID:           1,
+		CardNumber:       "4111111111111111",
+		ExpiryDate:       "12/25",
+		CardholderName:   "John Doe",
+		CVV:              "123",
+		IsDefault:        true,
+		BillingAddressID: 1,
+	}
+	paymentJSON, _ := json.Marshal(payment)
+	resp, err := http.Post(baseURL+"/payment-methods", "application/json", bytes.NewBuffer(paymentJSON))
+	if err != nil {
+		t.Fatalf("Failed to create payment method: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting payment methods
+	resp, err = http.Get(baseURL + "/payment-methods")
+	if err != nil {
+		t.Fatalf("Failed to get payment methods: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestSensitiveData(t *testing.T) {
+	// Test user with sensitive data
+	user := User{
+		ID:       1,
+		Name:     "John Doe",
+		Email:    "john@example.com",
+		Password: "secret123",   // Sensitive data
+		SSN:      "123-45-6789", // Sensitive data
+	}
+	userJSON, _ := json.Marshal(user)
+	resp, err := http.Post(baseURL+"/users", "application/json", bytes.NewBuffer(userJSON))
+	if err != nil {
+		t.Fatalf("Failed to create user with sensitive data: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test payment method with sensitive data
+	payment := PaymentMethod{
+		UserID:         1,
+		CardNumber:     "4111111111111111", // Sensitive data
+		ExpiryDate:     "12/25",
+		CardholderName: "John Doe",
+		CVV:            "123", // Sensitive data
+	}
+	paymentJSON, _ := json.Marshal(payment)
+	resp, err = http.Post(baseURL+"/payment-methods", "application/json", bytes.NewBuffer(paymentJSON))
+	if err != nil {
+		t.Fatalf("Failed to create payment method with sensitive data: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestOptionalFields(t *testing.T) {
+	// Test product with optional fields
+	product := Product{
+		ID:          1,
+		Name:        "Test Product",
+		Price:       99.99,
+		Description: "A test product with optional fields",
+		Category:    "Test",
+		Tags:        []string{"test", "optional"},
+		Metadata: map[string]string{
+			"color": "red",
+			"size":  "medium",
+		},
+	}
+	productJSON, _ := json.Marshal(product)
+	resp, err := http.Post(baseURL+"/products", "application/json", bytes.NewBuffer(productJSON))
+	if err != nil {
+		t.Fatalf("Failed to create product with optional fields: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test review with optional fields
+	review := Review{
+		UserID:       1,
+		ProductID:    1,
+		Rating:       5,
+		Comment:      "Great product!",
+		Title:        "Optional title",
+		HelpfulVotes: 5,
+		Metadata: map[string]string{
+			"verified": "true",
+		},
+	}
+	reviewJSON, _ := json.Marshal(review)
+	resp, err = http.Post(baseURL+"/reviews", "application/json", bytes.NewBuffer(reviewJSON))
+	if err != nil {
+		t.Fatalf("Failed to create review with optional fields: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+}
+
+func TestGetProductByID(t *testing.T) {
+	// First create a product
+	product := Product{
+		Name:     "Test Product",
+		Price:    99.99,
+		Category: "Test",
+	}
+	productJSON, _ := json.Marshal(product)
+	resp, err := http.Post(baseURL+"/products", "application/json", bytes.NewBuffer(productJSON))
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created product's ID
+	var createdProduct Product
+	if err := json.NewDecoder(resp.Body).Decode(&createdProduct); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Test getting the product by ID
+	resp, err = http.Get(fmt.Sprintf("%s/products/%d", baseURL, createdProduct.ID))
+	if err != nil {
+		t.Fatalf("Failed to get product: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting non-existent product
+	resp, err = http.Get(fmt.Sprintf("%s/products/99999", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get non-existent product: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status NotFound, got %v", resp.StatusCode)
+	}
+}
+
+func TestGetCategoryByID(t *testing.T) {
+	// First create a category
+	category := Category{
+		Name:        "Test Category",
+		Description: "Test Description",
+		ParentID:    1,
+	}
+	categoryJSON, _ := json.Marshal(category)
+	resp, err := http.Post(baseURL+"/categories", "application/json", bytes.NewBuffer(categoryJSON))
+	if err != nil {
+		t.Fatalf("Failed to create category: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created category's ID
+	var createdCategory Category
+	if err := json.NewDecoder(resp.Body).Decode(&createdCategory); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Test getting the category by ID
+	resp, err = http.Get(fmt.Sprintf("%s/categories/%d", baseURL, createdCategory.ID))
+	if err != nil {
+		t.Fatalf("Failed to get category: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting non-existent category
+	resp, err = http.Get(fmt.Sprintf("%s/categories/99999", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get non-existent category: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status NotFound, got %v", resp.StatusCode)
+	}
+}
+
+func TestGetPaymentMethodByID(t *testing.T) {
+	// First create a payment method
+	payment := PaymentMethod{
+		UserID:         1,
+		CardNumber:     "4111111111111111",
+		ExpiryDate:     "12/25",
+		CardholderName: "John Doe",
+	}
+	paymentJSON, _ := json.Marshal(payment)
+	resp, err := http.Post(baseURL+"/payment-methods", "application/json", bytes.NewBuffer(paymentJSON))
+	if err != nil {
+		t.Fatalf("Failed to create payment method: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created payment method's ID
+	var createdPayment PaymentMethod
+	if err := json.NewDecoder(resp.Body).Decode(&createdPayment); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Test getting the payment method by ID
+	resp, err = http.Get(fmt.Sprintf("%s/payment-methods/%d", baseURL, createdPayment.ID))
+	if err != nil {
+		t.Fatalf("Failed to get payment method: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting non-existent payment method
+	resp, err = http.Get(fmt.Sprintf("%s/payment-methods/99999", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get non-existent payment method: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status NotFound, got %v", resp.StatusCode)
+	}
+}
+
+func TestGetReviewByID(t *testing.T) {
+	// First create a review
+	review := Review{
+		UserID:    1,
+		ProductID: 1,
+		Rating:    5,
+		Comment:   "Test review",
+	}
+	reviewJSON, _ := json.Marshal(review)
+	resp, err := http.Post(baseURL+"/reviews", "application/json", bytes.NewBuffer(reviewJSON))
+	if err != nil {
+		t.Fatalf("Failed to create review: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created review's ID
+	var createdReview Review
+	if err := json.NewDecoder(resp.Body).Decode(&createdReview); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Test getting the review by ID
+	resp, err = http.Get(fmt.Sprintf("%s/reviews/%d", baseURL, createdReview.ID))
+	if err != nil {
+		t.Fatalf("Failed to get review: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting non-existent review
+	resp, err = http.Get(fmt.Sprintf("%s/reviews/99999", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get non-existent review: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status NotFound, got %v", resp.StatusCode)
+	}
+}
+
+func TestGetAddressByID(t *testing.T) {
+	// First create an address
+	address := Address{
+		UserID:     1,
+		Street:     "123 Test St",
+		City:       "Test City",
+		State:      "TS",
+		Country:    "Test Country",
+		PostalCode: "12345",
+	}
+	addressJSON, _ := json.Marshal(address)
+	resp, err := http.Post(baseURL+"/addresses", "application/json", bytes.NewBuffer(addressJSON))
+	if err != nil {
+		t.Fatalf("Failed to create address: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created address's ID
+	var createdAddress Address
+	if err := json.NewDecoder(resp.Body).Decode(&createdAddress); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Test getting the address by ID
+	resp, err = http.Get(fmt.Sprintf("%s/addresses/%d", baseURL, createdAddress.ID))
+	if err != nil {
+		t.Fatalf("Failed to get address: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Test getting non-existent address
+	resp, err = http.Get(fmt.Sprintf("%s/addresses/99999", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get non-existent address: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status NotFound, got %v", resp.StatusCode)
+	}
+}
+
+func TestInvalidIDFormats(t *testing.T) {
+	// Test invalid ID formats for all endpoints
+	endpoints := []string{
+		"/products",
+		"/categories",
+		"/reviews",
+		"/addresses",
+		"/payment-methods",
+	}
+
+	invalidIDs := []string{
+		"abc",  // non-numeric
+		"1.23", // decimal
+		"-1",   // negative
+		"0",    // zero
+		"",     // empty
+		"1abc", // mixed
+	}
+
+	for _, endpoint := range endpoints {
+		for _, invalidID := range invalidIDs {
+			resp, err := http.Get(fmt.Sprintf("%s%s/%s", baseURL, endpoint, invalidID))
+			if err != nil {
+				t.Errorf("Failed to get %s with invalid ID %s: %v", endpoint, invalidID, err)
+				continue
+			}
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Errorf("Expected status BadRequest for %s with invalid ID %s, got %v", endpoint, invalidID, resp.StatusCode)
+			}
+			resp.Body.Close()
+		}
 	}
 }
