@@ -149,14 +149,16 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 		return
 	}
 
-	key := method + " " + url
+	// Normalize the URL by removing the host name
+	normalizedURL := normalizeURL(url)
+	key := method + " " + normalizedURL
 
 	a.mu.Lock()
 	endpoint, exists := a.endpoints[key]
 	if !exists {
 		endpoint = &EndpointData{
 			Method:           method,
-			URL:              url,
+			URL:              normalizedURL,
 			RequestHeaders:   NewSchemaStore(),
 			RequestPayload:   NewSchemaStore(),
 			ResponseStatuses: make(map[int]*ResponseData),
