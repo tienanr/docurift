@@ -3,6 +3,7 @@ package analyzer
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -68,16 +69,52 @@ func NewAnalyzer() *Analyzer {
 	}
 }
 
+// Common HTTP headers to exclude from documentation
+var excludedHeaders = map[string]bool{
+	"Content-Length":    true,
+	"Content-Type":      true,
+	"Date":              true,
+	"Server":            true,
+	"Connection":        true,
+	"Keep-Alive":        true,
+	"Transfer-Encoding": true,
+	"Accept":            true,
+	"Accept-Encoding":   true,
+	"Accept-Language":   true,
+	"User-Agent":        true,
+	"Host":              true,
+}
+
+// normalizeURL removes the host name from a URL
+func normalizeURL(url string) string {
+	// Find the last occurrence of "://"
+	protocolIndex := strings.LastIndex(url, "://")
+	if protocolIndex == -1 {
+		return url
+	}
+
+	// Find the first "/" after the protocol
+	pathIndex := strings.Index(url[protocolIndex+3:], "/")
+	if pathIndex == -1 {
+		return "/"
+	}
+
+	// Return the path part
+	return url[protocolIndex+3+pathIndex:]
+}
+
 // ProcessRequest processes a request and response pair
 func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *http.Response, reqBody, respBody []byte) {
-	key := method + " " + url
+	// Normalize the URL by removing the host name
+	normalizedURL := normalizeURL(url)
+	key := method + " " + normalizedURL
 
 	a.mu.Lock()
 	endpoint, exists := a.endpoints[key]
 	if !exists {
 		endpoint = &EndpointData{
 			Method:           method,
-			URL:              url,
+			URL:              normalizedURL,
 			RequestHeaders:   NewSchemaStore(),
 			RequestPayload:   NewSchemaStore(),
 			ResponseStatuses: make(map[int]*ResponseData),
@@ -88,8 +125,10 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 
 	// Process request headers
 	for key, values := range req.Header {
-		for _, value := range values {
-			endpoint.RequestHeaders.AddValue(key, value)
+		if !excludedHeaders[key] {
+			for _, value := range values {
+				endpoint.RequestHeaders.AddValue(key, value)
+			}
 		}
 	}
 
@@ -116,8 +155,10 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 
 	// Process response headers
 	for key, values := range resp.Header {
-		for _, value := range values {
-			responseData.Headers.AddValue(key, value)
+		if !excludedHeaders[key] {
+			for _, value := range values {
+				responseData.Headers.AddValue(key, value)
+			}
 		}
 	}
 
