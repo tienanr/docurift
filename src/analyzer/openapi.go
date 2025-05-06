@@ -136,6 +136,68 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 			}
 		}
 
+		// Add URL parameters
+		for param, store := range endpoint.URLParameters.Examples {
+			// Skip common parameters that are handled separately
+			if param == "page" || param == "page_size" || param == "sort_by" || param == "order" || param == "search" {
+				continue
+			}
+
+			// Determine parameter type based on examples
+			paramType := "string"
+			if len(store) > 0 {
+				switch store[0].(type) {
+				case bool:
+					paramType = "boolean"
+				case float64:
+					paramType = "number"
+				case int:
+					paramType = "integer"
+				}
+			}
+
+			// Create parameter
+			param := Parameter{
+				Name:        param,
+				In:          "query",
+				Required:    !endpoint.URLParameters.Optional[param],
+				Description: fmt.Sprintf("Query parameter: %s", param),
+				Schema: Schema{
+					Type:     paramType,
+					Examples: store,
+				},
+			}
+			operation.Parameters = append(operation.Parameters, param)
+		}
+
+		// Add common query parameters
+		commonParams := []struct {
+			name        string
+			description string
+			type_       string
+		}{
+			{"page", "Page number for pagination", "integer"},
+			{"page_size", "Number of items per page", "integer"},
+			{"sort_by", "Field to sort by", "string"},
+			{"order", "Sort order (asc/desc)", "string"},
+			{"search", "Search query", "string"},
+		}
+
+		for _, cp := range commonParams {
+			if store, exists := endpoint.URLParameters.Examples[cp.name]; exists {
+				operation.Parameters = append(operation.Parameters, Parameter{
+					Name:        cp.name,
+					In:          "query",
+					Required:    !endpoint.URLParameters.Optional[cp.name],
+					Description: cp.description,
+					Schema: Schema{
+						Type:     cp.type_,
+						Examples: store,
+					},
+				})
+			}
+		}
+
 		// Add request parameters from headers
 		for header, store := range endpoint.RequestHeaders.Examples {
 			param := Parameter{

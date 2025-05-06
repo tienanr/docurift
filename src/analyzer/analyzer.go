@@ -60,6 +60,7 @@ type EndpointData struct {
 	URL              string
 	RequestHeaders   *SchemaStore
 	RequestPayload   *SchemaStore
+	URLParameters    *SchemaStore // New field for URL parameters
 	ResponseStatuses map[int]*ResponseData
 }
 
@@ -142,6 +143,11 @@ func normalizeURL(url string) string {
 	// Get the path part
 	path := url[protocolIndex+3+pathIndex:]
 
+	// Remove query parameters
+	if queryIndex := strings.Index(path, "?"); queryIndex != -1 {
+		path = path[:queryIndex]
+	}
+
 	// Split path into segments
 	segments := strings.Split(path, "/")
 	for i, segment := range segments {
@@ -182,7 +188,7 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 		return
 	}
 
-	// Normalize the URL by removing the host name
+	// Normalize the URL by removing the host name and query parameters
 	normalizedURL := normalizeURL(url)
 	key := method + " " + normalizedURL
 
@@ -194,11 +200,21 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 			URL:              normalizedURL,
 			RequestHeaders:   NewSchemaStore(),
 			RequestPayload:   NewSchemaStore(),
+			URLParameters:    NewSchemaStore(), // Initialize URL parameters store
 			ResponseStatuses: make(map[int]*ResponseData),
 		}
 		a.endpoints[key] = endpoint
 	}
 	a.mu.Unlock()
+
+	// Process URL parameters
+	for key, values := range req.URL.Query() {
+		for _, value := range values {
+			endpoint.URLParameters.AddValue(key, value)
+		}
+		// Mark as optional if not present in all requests
+		endpoint.URLParameters.SetOptional(key, true)
+	}
 
 	// Process request headers
 	for key, values := range req.Header {
