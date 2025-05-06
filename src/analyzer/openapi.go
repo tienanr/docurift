@@ -109,6 +109,33 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 			Responses: make(map[string]Response),
 		}
 
+		// Add path parameters
+		segments := strings.Split(path, "/")
+		for _, segment := range segments {
+			if segment == "{id}" {
+				operation.Parameters = append(operation.Parameters, Parameter{
+					Name:        "id",
+					In:          "path",
+					Required:    true,
+					Description: "Resource ID",
+					Schema: Schema{
+						Type: "integer",
+					},
+				})
+			} else if segment == "{uuid}" {
+				operation.Parameters = append(operation.Parameters, Parameter{
+					Name:        "uuid",
+					In:          "path",
+					Required:    true,
+					Description: "Resource UUID",
+					Schema: Schema{
+						Type:   "string",
+						Format: "uuid",
+					},
+				})
+			}
+		}
+
 		// Add request parameters from headers
 		for header, store := range endpoint.RequestHeaders.Examples {
 			param := Parameter{

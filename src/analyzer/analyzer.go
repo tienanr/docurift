@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -124,7 +125,7 @@ func sanitizeValue(value interface{}) interface{} {
 	return value
 }
 
-// normalizeURL removes the host name from a URL
+// normalizeURL removes the host name from a URL and generalizes path parameters
 func normalizeURL(url string) string {
 	// Find the last occurrence of "://"
 	protocolIndex := strings.LastIndex(url, "://")
@@ -138,8 +139,40 @@ func normalizeURL(url string) string {
 		return "/"
 	}
 
-	// Return the path part
-	return url[protocolIndex+3+pathIndex:]
+	// Get the path part
+	path := url[protocolIndex+3+pathIndex:]
+
+	// Split path into segments
+	segments := strings.Split(path, "/")
+	for i, segment := range segments {
+		// Skip empty segments
+		if segment == "" {
+			continue
+		}
+
+		// Check if segment is a numeric ID
+		if _, err := strconv.Atoi(segment); err == nil {
+			segments[i] = "{id}"
+			continue
+		}
+
+		// Check if segment is a UUID
+		if isUUID(segment) {
+			segments[i] = "{uuid}"
+			continue
+		}
+	}
+
+	// Rejoin segments
+	return strings.Join(segments, "/")
+}
+
+// isUUID checks if a string is a valid UUID
+func isUUID(s string) bool {
+	// UUID pattern: 8-4-4-4-12 hexadecimal digits
+	pattern := `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
+	matched, _ := regexp.MatchString(pattern, strings.ToLower(s))
+	return matched
 }
 
 // ProcessRequest processes a request and response pair
