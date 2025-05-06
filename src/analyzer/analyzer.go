@@ -3,6 +3,7 @@ package analyzer
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -83,6 +84,33 @@ var excludedHeaders = map[string]bool{
 	"Accept-Language":   true,
 	"User-Agent":        true,
 	"Host":              true,
+}
+
+// sensitivePatterns defines regex patterns for sensitive data
+var sensitivePatterns = map[string]string{
+	// Email pattern
+	`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`: "john.doe@example.com",
+	// Phone number pattern (supports various formats)
+	`^\+?[0-9]{10,15}$`: "+1-555-123-4567",
+	// Credit card pattern (supports various formats)
+	`^[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}$`: "4111-1111-1111-1111",
+	// SSN pattern
+	`^[0-9]{3}[- ]?[0-9]{2}[- ]?[0-9]{4}$`: "123-45-6789",
+	// Password pattern (any string containing "password" or "pass" or "pwd")
+	`(?i).*(password|pass|pwd).*`: "********",
+}
+
+// sanitizeValue replaces sensitive data with dummy values
+func sanitizeValue(value interface{}) interface{} {
+	if str, ok := value.(string); ok {
+		for pattern, replacement := range sensitivePatterns {
+			matched, _ := regexp.MatchString(pattern, str)
+			if matched {
+				return replacement
+			}
+		}
+	}
+	return value
 }
 
 // normalizeURL removes the host name from a URL
@@ -188,7 +216,9 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 			processJSONPayload(store, basePath+"[]", val)
 		}
 	default:
-		store.AddValue(basePath, v)
+		// Sanitize the value before storing it
+		sanitizedValue := sanitizeValue(v)
+		store.AddValue(basePath, sanitizedValue)
 	}
 }
 
