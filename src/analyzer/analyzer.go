@@ -188,6 +188,12 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 		return
 	}
 
+	// Process URL parameters before normalizing the URL
+	urlParams := make(map[string][]string)
+	for key, values := range req.URL.Query() {
+		urlParams[key] = values
+	}
+
 	// Normalize the URL by removing the host name and query parameters
 	normalizedURL := normalizeURL(url)
 	key := method + " " + normalizedURL
@@ -208,7 +214,7 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 	a.mu.Unlock()
 
 	// Process URL parameters
-	for key, values := range req.URL.Query() {
+	for key, values := range urlParams {
 		for _, value := range values {
 			endpoint.URLParameters.AddValue(key, value)
 		}

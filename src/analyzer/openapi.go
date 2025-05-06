@@ -68,6 +68,7 @@ type Schema struct {
 	Description string            `json:"description,omitempty"`
 	Example     interface{}       `json:"example,omitempty"`
 	Examples    []interface{}     `json:"examples,omitempty"`
+	Enum        []string          `json:"enum,omitempty"`
 }
 
 type Components struct {
@@ -136,85 +137,89 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 			}
 		}
 
-		// Add URL parameters
-		for param, store := range endpoint.URLParameters.Examples {
-			// Skip common parameters that are handled separately
-			if param == "page" || param == "page_size" || param == "sort_by" || param == "order" || param == "search" {
-				continue
-			}
-
-			// Determine parameter type based on examples
-			paramType := "string"
-			if len(store) > 0 {
-				switch store[0].(type) {
-				case bool:
-					paramType = "boolean"
-				case float64:
-					paramType = "number"
-				case int:
-					paramType = "integer"
+		// Add URL parameters if they exist
+		if endpoint.URLParameters != nil {
+			for param, store := range endpoint.URLParameters.Examples {
+				// Skip common parameters that are handled separately
+				if param == "page" || param == "page_size" || param == "sort_by" || param == "order" || param == "search" {
+					continue
 				}
-			}
 
-			// Create parameter
-			param := Parameter{
-				Name:        param,
-				In:          "query",
-				Required:    !endpoint.URLParameters.Optional[param],
-				Description: fmt.Sprintf("Query parameter: %s", param),
-				Schema: Schema{
-					Type:     paramType,
-					Examples: store,
-				},
-			}
-			operation.Parameters = append(operation.Parameters, param)
-		}
+				// Determine parameter type based on examples
+				paramType := "string"
+				if len(store) > 0 {
+					switch store[0].(type) {
+					case bool:
+						paramType = "boolean"
+					case float64:
+						paramType = "number"
+					case int:
+						paramType = "integer"
+					}
+				}
 
-		// Add common query parameters
-		commonParams := []struct {
-			name        string
-			description string
-			type_       string
-		}{
-			{"page", "Page number for pagination", "integer"},
-			{"page_size", "Number of items per page", "integer"},
-			{"sort_by", "Field to sort by", "string"},
-			{"order", "Sort order (asc/desc)", "string"},
-			{"search", "Search query", "string"},
-		}
-
-		for _, cp := range commonParams {
-			if store, exists := endpoint.URLParameters.Examples[cp.name]; exists {
-				operation.Parameters = append(operation.Parameters, Parameter{
-					Name:        cp.name,
+				// Create parameter
+				param := Parameter{
+					Name:        param,
 					In:          "query",
-					Required:    !endpoint.URLParameters.Optional[cp.name],
-					Description: cp.description,
+					Required:    !endpoint.URLParameters.Optional[param],
+					Description: fmt.Sprintf("Query parameter: %s", param),
 					Schema: Schema{
-						Type:     cp.type_,
+						Type:     paramType,
 						Examples: store,
 					},
-				})
+				}
+				operation.Parameters = append(operation.Parameters, param)
+			}
+
+			// Add common query parameters
+			commonParams := []struct {
+				name        string
+				description string
+				type_       string
+			}{
+				{"page", "Page number for pagination", "integer"},
+				{"page_size", "Number of items per page", "integer"},
+				{"sort_by", "Field to sort by", "string"},
+				{"order", "Sort order (asc/desc)", "string"},
+				{"search", "Search query", "string"},
+			}
+
+			for _, cp := range commonParams {
+				if store, exists := endpoint.URLParameters.Examples[cp.name]; exists {
+					operation.Parameters = append(operation.Parameters, Parameter{
+						Name:        cp.name,
+						In:          "query",
+						Required:    !endpoint.URLParameters.Optional[cp.name],
+						Description: cp.description,
+						Schema: Schema{
+							Type:     cp.type_,
+							Examples: store,
+						},
+					})
+				}
 			}
 		}
 
 		// Add request parameters from headers
-		for header, store := range endpoint.RequestHeaders.Examples {
-			param := Parameter{
-				Name:        header,
-				In:          "header",
-				Required:    !endpoint.RequestHeaders.Optional[header],
-				Description: fmt.Sprintf("Header: %s", header),
-				Schema: Schema{
-					Type:     "string",
-					Examples: store,
-				},
+		if endpoint.RequestHeaders != nil {
+			for header, store := range endpoint.RequestHeaders.Examples {
+				param := Parameter{
+					Name:        header,
+					In:          "header",
+					Required:    !endpoint.RequestHeaders.Optional[header],
+					Description: fmt.Sprintf("Header: %s", header),
+					Schema: Schema{
+						Type:     "string",
+						Examples: store,
+					},
+				}
+				operation.Parameters = append(operation.Parameters, param)
 			}
-			operation.Parameters = append(operation.Parameters, param)
 		}
 
 		// Add request body schema if exists
-		if len(endpoint.RequestPayload.Examples) > 0 {
+		if endpoint.RequestPayload != nil && len(endpoint.RequestPayload.Examples) > 0 {
 			requestBody := &RequestBody{
 				Required: true,
 				Content: map[string]MediaType{
@@ -239,12 +244,14 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 			}
 
 			// Add response headers
-			for header, store := range responseData.Headers.Examples {
-				response.Headers[header] = Header{
-					Schema: Schema{
-						Type:     "string",
-						Examples: store,
-					},
+			if responseData.Headers != nil {
+				for header, store := range responseData.Headers.Examples {
+					response.Headers[header] = Header{
+						Schema: Schema{
+							Type:     "string",
+							Examples: store,
+						},
+					}
 				}
 			}
 
@@ -397,6 +404,21 @@ func createPropertySchema(examples []interface{}) Schema {
 		switch examples[0].(type) {
 		case string:
 			propertySchema.Type = "string"
+			// Check if we have a limited set of unique string values
+			uniqueValues := make(map[string]bool)
+			for _, ex := range examples {
+				if str, ok := ex.(string); ok {
+					uniqueValues[str] = true
+				}
+			}
+			// If we have less than 5 unique values, add them as enum
+			if len(uniqueValues) > 0 && len(uniqueValues) < 5 {
+				enumValues := make([]string, 0, len(uniqueValues))
+				for val := range uniqueValues {
+					enumValues = append(enumValues, val)
+				}
+				propertySchema.Enum = enumValues
+			}
 		case float64:
 			propertySchema.Type = "number"
 		case bool:
