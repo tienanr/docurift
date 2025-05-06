@@ -32,7 +32,18 @@ func (s *SchemaStore) AddValue(path string, value interface{}) {
 		s.Examples[path] = make([]interface{}, 0)
 		s.Optional[path] = true
 	}
-	s.Examples[path] = append(s.Examples[path], value)
+
+	// Check if value already exists
+	for _, v := range s.Examples[path] {
+		if v == value {
+			return // Skip duplicate values
+		}
+	}
+
+	// Add value if we haven't reached the limit
+	if len(s.Examples[path]) < 10 {
+		s.Examples[path] = append(s.Examples[path], value)
+	}
 }
 
 // SetOptional marks a path as optional
