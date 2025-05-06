@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -106,6 +107,141 @@ var categories = []Category{
 var addresses = []Address{}
 var paymentMethods = []PaymentMethod{}
 
+// QueryParams represents common URL parameters
+type QueryParams struct {
+	Page     int
+	PageSize int
+	SortBy   string
+	Order    string
+	Search   string
+	Filter   map[string]string
+}
+
+// parseQueryParams extracts common URL parameters from the request
+func parseQueryParams(r *http.Request) QueryParams {
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	filter := make(map[string]string)
+	for k, v := range q {
+		if strings.HasPrefix(k, "filter_") {
+			filter[strings.TrimPrefix(k, "filter_")] = v[0]
+		}
+	}
+
+	return QueryParams{
+		Page:     page,
+		PageSize: pageSize,
+		SortBy:   q.Get("sort_by"),
+		Order:    q.Get("order"),
+		Search:   q.Get("search"),
+		Filter:   filter,
+	}
+}
+
+// paginateResults returns a paginated slice of results
+func paginateResults[T any](items []T, page, pageSize int) []T {
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if start >= len(items) {
+		return []T{}
+	}
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[start:end]
+}
+
+// filterProducts applies filters to products
+func filterProducts(products []Product, filter map[string]string) []Product {
+	if len(filter) == 0 {
+		return products
+	}
+
+	var filtered []Product
+	for _, p := range products {
+		match := true
+		for k, v := range filter {
+			switch k {
+			case "category":
+				if p.Category != v {
+					match = false
+				}
+			case "in_stock":
+				if strconv.FormatBool(p.InStock) != v {
+					match = false
+				}
+			case "min_price":
+				minPrice, _ := strconv.ParseFloat(v, 64)
+				if p.Price < minPrice {
+					match = false
+				}
+			case "max_price":
+				maxPrice, _ := strconv.ParseFloat(v, 64)
+				if p.Price > maxPrice {
+					match = false
+				}
+			}
+		}
+		if match {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
+
+// searchProducts searches products by name and description
+func searchProducts(products []Product, query string) []Product {
+	if query == "" {
+		return products
+	}
+	query = strings.ToLower(query)
+	var results []Product
+	for _, p := range products {
+		if strings.Contains(strings.ToLower(p.Name), query) ||
+			strings.Contains(strings.ToLower(p.Description), query) {
+			results = append(results, p)
+		}
+	}
+	return results
+}
+
+// sortProducts sorts products by the specified field
+func sortProducts(products []Product, sortBy, order string) []Product {
+	if sortBy == "" {
+		return products
+	}
+
+	sort.Slice(products, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "name":
+			less = products[i].Name < products[j].Name
+		case "price":
+			less = products[i].Price < products[j].Price
+		case "category":
+			less = products[i].Category < products[j].Category
+		default:
+			return false
+		}
+		if order == "desc" {
+			return !less
+		}
+		return less
+	})
+	return products
+}
+
 func main() {
 	mux := http.NewServeMux()
 
@@ -132,7 +268,21 @@ func main() {
 func handleProducts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		respondJSON(w, products)
+		params := parseQueryParams(r)
+
+		// Apply filters
+		filtered := filterProducts(products, params.Filter)
+
+		// Apply search
+		searched := searchProducts(filtered, params.Search)
+
+		// Apply sorting
+		sorted := sortProducts(searched, params.SortBy, params.Order)
+
+		// Apply pagination
+		paginated := paginateResults(sorted, params.Page, params.PageSize)
+
+		respondJSON(w, paginated)
 	case http.MethodPost:
 		var p Product
 		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
@@ -257,7 +407,40 @@ func handleOrders(w http.ResponseWriter, r *http.Request) {
 func handleReviews(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		respondJSON(w, reviews)
+		params := parseQueryParams(r)
+
+		// Filter reviews
+		var filtered []Review
+		for _, review := range reviews {
+			match := true
+			for k, v := range params.Filter {
+				switch k {
+				case "user_id":
+					userID, _ := strconv.Atoi(v)
+					if review.UserID != userID {
+						match = false
+					}
+				case "product_id":
+					productID, _ := strconv.Atoi(v)
+					if review.ProductID != productID {
+						match = false
+					}
+				case "rating":
+					rating, _ := strconv.Atoi(v)
+					if review.Rating != rating {
+						match = false
+					}
+				}
+			}
+			if match {
+				filtered = append(filtered, review)
+			}
+		}
+
+		// Apply pagination
+		paginated := paginateResults(filtered, params.Page, params.PageSize)
+
+		respondJSON(w, paginated)
 	case http.MethodPost:
 		var review Review
 		if err := json.NewDecoder(r.Body).Decode(&review); err != nil {

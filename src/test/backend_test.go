@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -653,4 +654,190 @@ func TestInvalidIDFormats(t *testing.T) {
 			resp.Body.Close()
 		}
 	}
+}
+
+func TestProductURLParameters(t *testing.T) {
+	// Create test products
+	products := []Product{
+		{Name: "Laptop", Price: 999.99, Category: "Electronics", InStock: true, Description: "High-end laptop"},
+		{Name: "Smartphone", Price: 699.99, Category: "Electronics", InStock: true, Description: "Latest model"},
+		{Name: "Headphones", Price: 199.99, Category: "Audio", InStock: false, Description: "Noise cancelling"},
+		{Name: "Keyboard", Price: 79.99, Category: "Electronics", InStock: true, Description: "Mechanical keyboard"},
+		{Name: "Mouse", Price: 49.99, Category: "Electronics", InStock: true, Description: "Wireless mouse"},
+	}
+
+	// Create products first
+	for _, p := range products {
+		productJSON, _ := json.Marshal(p)
+		resp, err := http.Post(baseURL+"/products", "application/json", bytes.NewBuffer(productJSON))
+		if err != nil {
+			t.Fatalf("Failed to create product: %v", err)
+		}
+		resp.Body.Close()
+	}
+
+	// Test pagination
+	t.Run("Pagination", func(t *testing.T) {
+		resp := doGet(t, "/products?page=1&page_size=2")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Product
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		if len(result) != 2 {
+			t.Errorf("Expected 2 products, got %d", len(result))
+		}
+	})
+
+	// Test sorting
+	t.Run("Sorting", func(t *testing.T) {
+		resp := doGet(t, "/products?sort_by=price&order=desc")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Product
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		if len(result) < 2 {
+			t.Fatalf("Expected at least 2 products")
+		}
+		if result[0].Price < result[1].Price {
+			t.Error("Products not sorted by price in descending order")
+		}
+	})
+
+	// Test filtering
+	t.Run("Filtering", func(t *testing.T) {
+		resp := doGet(t, "/products?filter_category=Electronics&filter_in_stock=true")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Product
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, p := range result {
+			if p.Category != "Electronics" || !p.InStock {
+				t.Errorf("Product does not match filter criteria: %+v", p)
+			}
+		}
+	})
+
+	// Test searching
+	t.Run("Searching", func(t *testing.T) {
+		resp := doGet(t, "/products?search=laptop")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Product
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		if len(result) == 0 {
+			t.Error("Expected to find products matching 'laptop'")
+		}
+		for _, p := range result {
+			if !strings.Contains(strings.ToLower(p.Name), "laptop") &&
+				!strings.Contains(strings.ToLower(p.Description), "laptop") {
+				t.Errorf("Product does not match search criteria: %+v", p)
+			}
+		}
+	})
+}
+
+func TestReviewURLParameters(t *testing.T) {
+	// Create test reviews
+	reviews := []Review{
+		{UserID: 1, ProductID: 1, Rating: 5, Comment: "Great product!"},
+		{UserID: 1, ProductID: 2, Rating: 4, Comment: "Good but expensive"},
+		{UserID: 2, ProductID: 1, Rating: 3, Comment: "Average product"},
+		{UserID: 2, ProductID: 2, Rating: 5, Comment: "Excellent!"},
+	}
+
+	// Create reviews first
+	for _, r := range reviews {
+		reviewJSON, _ := json.Marshal(r)
+		resp, err := http.Post(baseURL+"/reviews", "application/json", bytes.NewBuffer(reviewJSON))
+		if err != nil {
+			t.Fatalf("Failed to create review: %v", err)
+		}
+		resp.Body.Close()
+	}
+
+	// Test filtering by user
+	t.Run("FilterByUser", func(t *testing.T) {
+		resp := doGet(t, "/reviews?filter_user_id=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Review
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, r := range result {
+			if r.UserID != 1 {
+				t.Errorf("Review does not belong to user 1: %+v", r)
+			}
+		}
+	})
+
+	// Test filtering by product
+	t.Run("FilterByProduct", func(t *testing.T) {
+		resp := doGet(t, "/reviews?filter_product_id=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Review
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, r := range result {
+			if r.ProductID != 1 {
+				t.Errorf("Review does not belong to product 1: %+v", r)
+			}
+		}
+	})
+
+	// Test filtering by rating
+	t.Run("FilterByRating", func(t *testing.T) {
+		resp := doGet(t, "/reviews?filter_rating=5")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Review
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, r := range result {
+			if r.Rating != 5 {
+				t.Errorf("Review does not have rating 5: %+v", r)
+			}
+		}
+	})
+
+	// Test pagination
+	t.Run("Pagination", func(t *testing.T) {
+		resp := doGet(t, "/reviews?page=1&page_size=2")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Review
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		if len(result) != 2 {
+			t.Errorf("Expected 2 reviews, got %d", len(result))
+		}
+	})
 }
