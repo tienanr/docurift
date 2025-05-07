@@ -242,25 +242,33 @@ func sortProducts(products []Product, sortBy, order string) []Product {
 	return products
 }
 
-func main() {
-	mux := http.NewServeMux()
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
 
-	mux.HandleFunc("/products", handleProducts)
-	mux.HandleFunc("/products/", handleProductByID)
-	mux.HandleFunc("/users", handleUsers)
-	mux.HandleFunc("/users/", handleUserByID)
-	mux.HandleFunc("/orders", handleOrders)
-	mux.HandleFunc("/reviews", handleReviews)
-	mux.HandleFunc("/reviews/", handleReviewByID)
-	mux.HandleFunc("/categories", handleCategories)
-	mux.HandleFunc("/categories/", handleCategoryByID)
-	mux.HandleFunc("/addresses", handleAddresses)
-	mux.HandleFunc("/addresses/", handleAddressByID)
-	mux.HandleFunc("/payment-methods", handlePaymentMethods)
-	mux.HandleFunc("/payment-methods/", handlePaymentMethodByID)
+func main() {
+	// Add health check endpoint
+	http.HandleFunc("/health", handleHealth)
+
+	// Add other endpoints
+	http.HandleFunc("/products", handleProducts)
+	http.HandleFunc("/products/", handleProductByID)
+	http.HandleFunc("/users", handleUsers)
+	http.HandleFunc("/users/", handleUserByID)
+	http.HandleFunc("/orders", handleOrders)
+	http.HandleFunc("/reviews", handleReviews)
+	http.HandleFunc("/reviews/", handleReviewByID)
+	http.HandleFunc("/categories", handleCategories)
+	http.HandleFunc("/categories/", handleCategoryByID)
+	http.HandleFunc("/addresses", handleAddresses)
+	http.HandleFunc("/addresses/", handleAddressByID)
+	http.HandleFunc("/payment-methods", handlePaymentMethods)
+	http.HandleFunc("/payment-methods/", handlePaymentMethodByID)
 
 	log.Println("Backend API running on :8081")
-	log.Fatal(http.ListenAndServe(":8081", mux))
+	log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 // ==== HANDLERS ====

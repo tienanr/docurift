@@ -5,11 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
 
-const baseURL = "http://localhost:8080"
+var baseURL = getBaseURL()
+
+func getBaseURL() string {
+	if url := os.Getenv("PROXY_URL"); url != "" {
+		return url
+	}
+	return "http://localhost:8080"
+}
 
 // --- Utility Functions ---
 

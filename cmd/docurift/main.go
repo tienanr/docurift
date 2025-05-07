@@ -49,18 +49,25 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to configuration file")
 	flag.Parse()
 
+	log.Printf("Loading configuration from: %s", *configPath)
+
 	// Load configuration
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	log.Printf("Configuration loaded successfully: %+v", cfg)
+
 	// Initialize analyzer with max examples from config
 	analyzerInstance := analyzer.NewAnalyzer()
 	analyzerInstance.SetMaxExamples(cfg.Analyzer.MaxExamples)
 	analyzerServer := analyzer.NewServer(analyzerInstance)
+
+	// Start analyzer server in a goroutine
 	go func() {
 		addr := fmt.Sprintf(":%d", cfg.Analyzer.Port)
+		log.Printf("Starting analyzer server on %s", addr)
 		if err := analyzerServer.Start(addr); err != nil {
 			log.Fatalf("Failed to start analyzer server: %v", err)
 		}
@@ -71,6 +78,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid backend URL: %v", err)
 	}
+
+	log.Printf("Using backend URL: %s", backendURL.String())
 
 	fwd, err := forward.New(forward.PassHostHeader(true))
 	if err != nil {
@@ -111,7 +120,7 @@ func main() {
 	})
 
 	addr := fmt.Sprintf(":%d", cfg.Proxy.Port)
-	log.Printf("Proxy listening on %s", addr)
+	log.Printf("Starting proxy server on %s", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("Failed to start proxy server: %v", err)
 	}

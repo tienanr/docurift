@@ -20,6 +20,7 @@ func NewServer(analyzer *Analyzer) *Server {
 
 // Start starts the analyzer server
 func (s *Server) Start(addr string) error {
+	http.HandleFunc("/health", s.handleHealth)
 	http.HandleFunc("/analyzer", s.handleAnalyzer)
 	http.HandleFunc("/openapi.json", s.handleOpenAPI)
 	http.HandleFunc("/postman.json", s.handlePostman)
@@ -63,4 +64,14 @@ func (s *Server) handlePostman(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename=api-collection.json")
 	json.NewEncoder(w).Encode(collection)
+}
+
+// handleHealth handles requests to the health check endpoint
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }

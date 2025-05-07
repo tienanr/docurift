@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: test/backend/Dockerfile
+    ports:
+      - "8081:8081"
+    networks:
+      - docurift-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  docurift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8082:8082"
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    networks:
+      - docurift-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  test:
+    build:
+      context: .
+      dockerfile: test/Dockerfile
+    volumes:
+      - ./test:/app/test
+    environment:
+      - BACKEND_URL=http://backend:8081
+      - PROXY_URL=http://docurift:8080
+      - ANALYZER_URL=http://docurift:8082
+    networks:
+      - docurift-network
+    depends_on:
+      docurift:
+        condition: service_healthy
+
+networks:
+  docurift-network:
+    driver: bridge 
