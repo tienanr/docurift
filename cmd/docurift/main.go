@@ -8,10 +8,17 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
-	"github.com/tienanr/docurift/analyzer"
-	"github.com/tienanr/docurift/config"
+	"github.com/tienanr/docurift/internal/analyzer"
+	"github.com/tienanr/docurift/internal/config"
 	"github.com/vulcand/oxy/forward"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 // customResponseWriter captures the response for logging
@@ -32,6 +39,12 @@ func (w *customResponseWriter) Write(b []byte) (int, error) {
 }
 
 func main() {
+	// Check for version flag
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Printf("DocuRift version %s (commit: %s, built: %s)\n", version, commit, date)
+		return
+	}
+
 	// Parse command line arguments
 	configPath := flag.String("config", "config.yaml", "path to configuration file")
 	flag.Parse()
