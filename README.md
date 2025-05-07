@@ -40,29 +40,6 @@ Or install directly:
 make install
 ```
 
-### Quick Install
-
-#### Using Homebrew (macOS)
-```bash
-brew install docurift
-```
-
-#### Using apt (Ubuntu/Debian)
-```bash
-# Add the repository
-curl -fsSL https://download.docurift.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docurift-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/docurift-archive-keyring.gpg] https://download.docurift.com/apt stable main" | sudo tee /etc/apt/sources.list.d/docurift.list
-
-# Install DocuRift
-sudo apt update
-sudo apt install docurift
-```
-
-#### Using Chocolatey (Windows)
-```powershell
-choco install docurift
-```
-
 ## Configuration
 
 The application uses a YAML configuration file (`src/config.yaml`) with the following settings:
