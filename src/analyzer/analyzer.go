@@ -11,9 +11,10 @@ import (
 
 // SchemaStore represents a store for tracking JSON schema paths and their values
 type SchemaStore struct {
-	mu       sync.RWMutex
-	Examples map[string][]interface{} // path -> []values
-	Optional map[string]bool          // path -> isOptional
+	mu          sync.RWMutex
+	Examples    map[string][]interface{} // path -> []values
+	Optional    map[string]bool          // path -> isOptional
+	maxExamples int                      // Maximum number of examples to keep per field
 }
 
 // NewSchemaStore creates a new SchemaStore
@@ -42,7 +43,7 @@ func (s *SchemaStore) AddValue(path string, value interface{}) {
 	}
 
 	// Add value if we haven't reached the limit
-	if len(s.Examples[path]) < 10 {
+	if len(s.Examples[path]) < s.maxExamples {
 		s.Examples[path] = append(s.Examples[path], value)
 	}
 }
@@ -72,15 +73,24 @@ type ResponseData struct {
 
 // Analyzer is the main analyzer structure
 type Analyzer struct {
-	mu        sync.RWMutex
-	endpoints map[string]*EndpointData // key: method+url
+	mu          sync.RWMutex
+	endpoints   map[string]*EndpointData // key: method+url
+	maxExamples int                      // Maximum number of examples to keep per field
 }
 
 // NewAnalyzer creates a new Analyzer instance
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
-		endpoints: make(map[string]*EndpointData),
+		endpoints:   make(map[string]*EndpointData),
+		maxExamples: 10, // Default value
 	}
+}
+
+// SetMaxExamples sets the maximum number of examples to keep per field
+func (a *Analyzer) SetMaxExamples(max int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.maxExamples = max
 }
 
 // Common HTTP headers to exclude from documentation

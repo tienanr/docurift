@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/tienanr/docurift/analyzer"
+	"github.com/tienanr/docurift/config"
 	"github.com/vulcand/oxy/forward"
 )
 
@@ -29,16 +32,29 @@ func (w *customResponseWriter) Write(b []byte) (int, error) {
 }
 
 func main() {
-	// Initialize analyzer
+	// Parse command line arguments
+	configPath := flag.String("config", "config.yaml", "path to configuration file")
+	flag.Parse()
+
+	// Load configuration
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Initialize analyzer with max examples from config
 	analyzerInstance := analyzer.NewAnalyzer()
+	analyzerInstance.SetMaxExamples(cfg.Analyzer.MaxExamples)
 	analyzerServer := analyzer.NewServer(analyzerInstance)
 	go func() {
-		if err := analyzerServer.Start(":8082"); err != nil {
+		addr := fmt.Sprintf(":%d", cfg.Analyzer.Port)
+		if err := analyzerServer.Start(addr); err != nil {
 			log.Fatalf("Failed to start analyzer server: %v", err)
 		}
 	}()
 
-	backendURL, err := url.Parse("http://localhost:8081")
+	// Parse backend URL
+	backendURL, err := url.Parse(cfg.Proxy.BackendURL)
 	if err != nil {
 		log.Fatalf("Invalid backend URL: %v", err)
 	}
@@ -81,6 +97,9 @@ func main() {
 		)
 	})
 
-	log.Println("Proxy listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	addr := fmt.Sprintf(":%d", cfg.Proxy.Port)
+	log.Printf("Proxy listening on %s", addr)
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		log.Fatalf("Failed to start proxy server: %v", err)
+	}
 }
