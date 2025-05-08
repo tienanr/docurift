@@ -267,8 +267,8 @@ func main() {
 	http.HandleFunc("/payment-methods", handlePaymentMethods)
 	http.HandleFunc("/payment-methods/", handlePaymentMethodByID)
 
-	log.Println("Backend API running on :8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Println("Backend API running on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 // ==== HANDLERS ====

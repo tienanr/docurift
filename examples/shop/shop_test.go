@@ -16,7 +16,7 @@ func getBaseURL() string {
 	if url := os.Getenv("PROXY_URL"); url != "" {
 		return url
 	}
-	return "http://localhost:8080"
+	return "http://localhost:9876"
 }
 
 // --- Utility Functions ---
