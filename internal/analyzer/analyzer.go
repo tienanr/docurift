@@ -107,6 +107,7 @@ var excludedHeaders = map[string]bool{
 	"Accept-Language":   true,
 	"User-Agent":        true,
 	"Host":              true,
+	"Authorization":     true,
 }
 
 // sensitivePatterns defines regex patterns for sensitive data
