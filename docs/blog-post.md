@@ -38,44 +38,56 @@ DocuRift acts as an HTTP proxy that sits between your clients and your API serve
 
 Here's a step-by-step example of how we use DocuRift in our development environment:
 
-1. First, set up your config file (config.yaml):
-```yaml
-proxy:
-  port: 8080
-  backend_url: "http://your-api:8081"
+1. Start DocuRift with your desired configuration:
+```bash
+docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
+```
 
-analyzer:
-  port: 8082
-  max_examples: 10
+Available options:
+- `-proxy-port`: Proxy server port (default: 9876)
+- `-analyzer-port`: Analyzer server port (default: 9877)
+- `-backend-url`: Backend API URL (default: http://localhost:8080)
+- `-max-examples`: Maximum number of examples per endpoint (default: 10)
+
+Note: DocuRift automatically validates ports to ensure they:
+- Are within the valid range (1024-65535)
+- Are not already in use by other services
+- Are not the same as each other
+
+If a port is invalid or in use, DocuRift will show a helpful error message:
+```
+# Port below minimum
+Invalid configuration: proxy port 80 is below minimum allowed port (1024)
+
+# Port above maximum
+Invalid configuration: analyzer port 70000 is above maximum allowed port (65535)
+
+# Port in use
+Invalid configuration: proxy port 9876 is already in use by process: nginx
 ```
 
 2. Start your API server (in this case, we're using a sample online store API):
 ```bash
 # Build and run the example API
 docker build -t online-store -f examples/online_store/Dockerfile .
-docker run -p 8081:8081 online-store
+docker run -p 8080:8080 online-store
 ```
 
-3. Start DocuRift:
-```bash
-docurift
-```
-
-4. Make some requests to your API through DocuRift:
+3. Make some requests to your API through DocuRift:
 ```bash
 # List products
-curl http://localhost:8080/products
+curl http://localhost:9876/products
 
 # Get a specific product
-curl http://localhost:8080/products/1
+curl http://localhost:9876/products/1
 
 # Create a new product
-curl -X POST http://localhost:8080/products \
+curl -X POST http://localhost:9876/products \
   -H "Content-Type: application/json" \
   -d '{"name": "New Product", "price": 99.99}'
 ```
 
-5. Access your automatically generated documentation at `http://localhost:8082/docs`
+4. Access your automatically generated documentation at `http://localhost:9877/docs`
 
 That's it! Your legacy API documentation is now automatically generated and maintained. No more digging through code, no more outdated docs.
 
