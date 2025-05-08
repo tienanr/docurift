@@ -1,109 +1,66 @@
 # DocuRift
 
-DocuRift is an intelligent API documentation generator that automatically analyzes your API traffic and generates comprehensive documentation in multiple formats. It works as a proxy server that captures API requests and responses, then generates OpenAPI and Postman collection documentation.
+DocuRift is a powerful tool that automatically generates and maintains REST API documentation by observing real API traffic. It acts as a proxy between your clients and API server, capturing and analyzing requests and responses to create comprehensive documentation.
+
+This is particular useful for existing REST API service with live traffic but lack of documentation. Setup DocuRift as a proxy to run in front of your existing service and wait for a period of time, and come back to get your Open API spec and Postman Collection! 
+
+This is safe to run in production environment as it does not send any data out, and masks sensitive user information by default. Analyzer and document generator runs asynchronously without additional performance penalty to your existing service!
 
 ## Features
 
-- 🔄 Automatic API traffic analysis
-- 📝 Generates OpenAPI (Swagger) documentation
-- 📦 Creates Postman collections
-- 🔍 Tracks request/response examples
-- 📊 Supports query parameters, headers, and request bodies
-- ⚡ Real-time documentation updates
-- 🎯 Configurable example limits
+- 🔄 **Real-time Documentation**: Automatically generates documentation from actual API usage
+- 📝 **OpenAPI/Swagger Support**: Generates OpenAPI 3.0 specifications
+- 📦 **Postman Collection**: Creates Postman collections for easy API testing
+- 🔍 **Request/Response Examples**: Captures real examples of API usage
+- 🛡️ **Security**: Handles sensitive data appropriately
+- 📊 **Interactive UI**: Integrated Swagger UI for documentation browsing
 
 ## Installation
 
-### Using Go Install (Recommended)
-
 ```bash
-go install github.com/tienanr/docurift/cmd/docurift@latest
+go install github.com/tienanr/docurift@latest
 ```
 
-This will install the latest version of DocuRift to your `$GOPATH/bin` directory.
+## Quick Start
 
-### Building from Source
-
-1. Clone the repository:
+1. Start DocuRift with your desired configuration:
 ```bash
-git clone https://github.com/tienanr/docurift.git
-cd docurift
+docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
 ```
 
-2. Build the project:
+2. Start your API server (example using the included shop API):
 ```bash
-make build
+# Build and run the example API
+cd examples/shop
+go run shop.go
 ```
+Confirm example shop services is running on port 8080
 
-Or install directly:
+3. Make requests to your API through DocuRift:
 ```bash
-make install
+go test ./examples/shop
 ```
 
-## Configuration
+4. Access your automatically generated documentation at `http://localhost:9877/` (Swagger UI)
+You can also get open API spec: `http://localhost:9877/openapi.json`
+And Postman Collection: `http://localhost:9877/postman.json`
 
-The application uses a YAML configuration file (`src/config.yaml`) with the following settings:
+## Configuration Options
 
-```yaml
-# Proxy server configuration
-proxy:
-  port: 8080
-  backend_url: "http://localhost:8081"
+- `-proxy-port`: Proxy server port (default: 9876)
+- `-analyzer-port`: Analyzer server port (default: 9877)
+- `-backend-url`: Backend API URL (default: http://localhost:8080)
+- `-max-examples`: Maximum number of examples per endpoint (default: 10)
 
-# Analyzer server configuration
-analyzer:
-  port: 8082
-  max_examples: 10  # Maximum number of example values to keep per field
-```
+## Examples
 
-You can customize:
-- Proxy server port
-- Backend API URL
-- Analyzer server port
-- Maximum number of examples to keep per field
-
-## Usage
-
-1. Start the application:
-```bash
-./docurift
-```
-
-Or specify a custom config file:
-```bash
-./docurift -config /path/to/config.yaml
-```
-
-2. Configure your application to use the proxy server (default: `http://localhost:8080`)
-
-3. Access the generated documentation:
-- OpenAPI documentation: `http://localhost:8082/openapi.json`
-- Postman collection: `http://localhost:8082/postman.json`
-
-## How It Works
-
-1. The proxy server (`:8080`) intercepts all API traffic
-2. The analyzer server (`:8082`) processes the traffic and generates documentation
-3. Documentation is automatically updated as new API calls are made
-4. Access the documentation through the analyzer server endpoints
-
-## Documentation Formats
-
-### OpenAPI (Swagger)
-- Comprehensive API specification
-- Includes endpoints, methods, parameters, and examples
-- Compatible with Swagger UI and other OpenAPI tools
-- View interactive documentation at `http://localhost:8082/swagger-ui/`
-- Test API endpoints directly from the Swagger UI interface
-
-### Postman Collection
-- Ready-to-use Postman collection
-- Includes example requests and responses
-- Can be imported directly into Postman
+Check out the `examples` directory for sample implementations:
+- `examples/shop`: A complete e-commerce API with various endpoints
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+If you find any bugs or need more features please let me know!
+Contributions are also welcome! Please feel free to submit a Pull Request.
 
 ## License
 
