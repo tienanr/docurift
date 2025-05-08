@@ -6,6 +6,17 @@ This is particular useful for existing REST API service with live traffic but la
 
 This is safe to run in production environment as it does not send any data out, and masks sensitive user information by default. Analyzer and document generator runs asynchronously without additional performance penalty to your existing service!
 
+sequenceDiagram
+    participant Client
+    participant DocuRift
+    participant Backend
+    participant Analyzer
+    
+    Client->>DocuRift: HTTP Request
+    DocuRift->>Backend: Forward Request
+    Backend->>DocuRift: HTTP Response
+    DocuRift->>Analyzer: Process Traffic
+
 ## Features
 
 - 🔄 **Real-time Documentation**: Automatically generates documentation from actual API usage
