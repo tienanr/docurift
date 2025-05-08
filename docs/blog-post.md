@@ -39,27 +39,45 @@ DocuRift acts as an HTTP proxy that sits between your clients and your API serve
 Here's a step-by-step example of how we use DocuRift in our development environment:
 
 1. First, set up your config file (config.yaml):
+```yaml
+proxy:
+  port: 8080
+  backend_url: "http://your-api:8081"
 
+analyzer:
+  port: 8082
+  max_examples: 10
+```
 
-## For the Team Players
-
-If you're working with a legacy API, DocuRift is a game-changer. New team members can understand the API faster, there's less back-and-forth about how things work, and everyone stays on the same page. It's like having a shared brain for your legacy API.
-
-## Getting Started is a Breeze
-
-Ready to try it? Here's all you need to do:
-
+2. Start your API server (in this case, we're using a sample online store API):
 ```bash
-# Install it
-go install github.com/yourusername/docurift@latest
+# Build and run the example API
+docker build -t online-store -f examples/online_store/Dockerfile .
+docker run -p 8081:8081 online-store
+```
 
-# Run it
+3. Start DocuRift:
+```bash
 docurift
 ```
 
-TODO: complete this
+4. Make some requests to your API through DocuRift:
+```bash
+# List products
+curl http://localhost:8080/products
 
-That's it. Your legacy API documentation is now automatically generated and maintained. No more digging through code, no more outdated docs.
+# Get a specific product
+curl http://localhost:8080/products/1
+
+# Create a new product
+curl -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New Product", "price": 99.99}'
+```
+
+5. Access your automatically generated documentation at `http://localhost:8082/docs`
+
+That's it! Your legacy API documentation is now automatically generated and maintained. No more digging through code, no more outdated docs.
 
 ## Let's Connect
 
