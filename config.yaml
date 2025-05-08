@@ -1,9 +1,0 @@
-# Proxy server configuration
-proxy:
-  port: 8080
-  backend_url: "http://localhost:8081"
-
-# Analyzer server configuration
-analyzer:
-  port: 8082
-  max_examples: 10  # Maximum number of example values to keep per field 

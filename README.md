@@ -41,13 +41,12 @@ go install github.com/tienanr/docurift@latest
 docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
 ```
 
-2. Start your API server (example using the included shop API):
+2. Start your API server (example using the included shop API) on port 8080:
 ```bash
 # Build and run the example API
 cd examples/shop
 go run shop.go
 ```
-Confirm example shop services is running on port 8080
 
 3. Make requests to your API through DocuRift:
 ```bash
@@ -55,8 +54,8 @@ go test ./examples/shop
 ```
 
 4. Access your automatically generated documentation at `http://localhost:9877/` (Swagger UI)
-You can also get open API spec: `http://localhost:9877/openapi.json`
-And Postman Collection: `http://localhost:9877/postman.json`
+
+5. Get open API spec: `http://localhost:9877/openapi.json` and Postman Collection: `http://localhost:9877/postman.json`
 
 ## Configuration Options
 
