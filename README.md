@@ -6,7 +6,7 @@ This is particular useful for existing REST API service with live traffic but la
 
 This is safe to run in production environment as it does not send any data out, and masks sensitive user information by default. Analyzer and document generator runs asynchronously without additional performance penalty to your existing service!
 
-```
+```mermaid
 sequenceDiagram
     participant Client
     participant DocuRift
