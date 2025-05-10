@@ -13,6 +13,7 @@ func TestNewAnalyzer(t *testing.T) {
 	a := NewAnalyzer()
 	if a == nil {
 		t.Fatal("NewAnalyzer returned nil")
+		return
 	}
 	if a.maxExamples != 10 {
 		t.Errorf("Expected maxExamples to be 10, got %d", a.maxExamples)

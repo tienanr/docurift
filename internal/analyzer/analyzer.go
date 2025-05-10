@@ -366,8 +366,8 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 		if resp.Header.Get("Content-Encoding") == "gzip" {
 			b := bytes.NewReader(respBody)
 			reader, err := gzip.NewReader(b)
-			defer reader.Close()
 			if err == nil {
+				defer reader.Close()
 				respBody, _ = io.ReadAll(reader)
 			}
 		}
