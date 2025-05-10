@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -90,6 +91,42 @@ type PaymentMethod struct {
 	BillingAddressID int    `json:"billing_address_id,omitempty"`
 }
 
+type LineItem struct {
+	ID          int       `json:"id"`
+	ProductID   int       `json:"product_id"`
+	Quantity    int       `json:"quantity"`
+	UnitPrice   float64   `json:"unit_price"`
+	TotalPrice  float64   `json:"total_price"`
+	Description string    `json:"description,omitempty"`
+	TaxInfo     []TaxInfo `json:"tax_info"`
+}
+
+type TaxInfo struct {
+	ID           int     `json:"id"`
+	Jurisdiction string  `json:"jurisdiction"`
+	TaxRate      float64 `json:"tax_rate"`
+	TaxAmount    float64 `json:"tax_amount"`
+	Description  string  `json:"description,omitempty"`
+}
+
+type Invoice struct {
+	ID            int        `json:"id"`
+	UserID        int        `json:"user_id"`
+	OrderID       int        `json:"order_id"`
+	InvoiceNumber string     `json:"invoice_number"`
+	IssueDate     time.Time  `json:"issue_date"`
+	DueDate       time.Time  `json:"due_date"`
+	Subtotal      float64    `json:"subtotal"`
+	TotalTax      float64    `json:"total_tax"`
+	Total         float64    `json:"total"`
+	Status        string     `json:"status"`
+	LineItems     []LineItem `json:"line_items"`
+	// Optional fields
+	Notes        string            `json:"notes,omitempty"`
+	PaymentTerms string            `json:"payment_terms,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+}
+
 var products = []Product{
 	{ID: 1, Name: "Laptop", Price: 1299.99, InStock: true, Category: "Electronics"},
 	{ID: 2, Name: "Sneakers", Price: 89.99, InStock: true, Category: "Footwear"},
@@ -106,6 +143,7 @@ var categories = []Category{
 }
 var addresses = []Address{}
 var paymentMethods = []PaymentMethod{}
+var invoices = []Invoice{}
 
 // QueryParams represents common URL parameters
 type QueryParams struct {
@@ -266,6 +304,8 @@ func main() {
 	http.HandleFunc("/addresses/", handleAddressByID)
 	http.HandleFunc("/payment-methods", handlePaymentMethods)
 	http.HandleFunc("/payment-methods/", handlePaymentMethodByID)
+	http.HandleFunc("/invoices", handleInvoices)
+	http.HandleFunc("/invoices/", handleInvoiceByID)
 
 	log.Println("Backend API running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -671,6 +711,128 @@ func handlePaymentMethodByID(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		http.NotFound(w, r)
+	}
+}
+
+func handleInvoices(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		params := parseQueryParams(r)
+
+		// Filter invoices
+		var filtered []Invoice
+		for _, invoice := range invoices {
+			match := true
+			for k, v := range params.Filter {
+				switch k {
+				case "user_id":
+					userID, _ := strconv.Atoi(v)
+					if invoice.UserID != userID {
+						match = false
+					}
+				case "order_id":
+					orderID, _ := strconv.Atoi(v)
+					if invoice.OrderID != orderID {
+						match = false
+					}
+				case "status":
+					if invoice.Status != v {
+						match = false
+					}
+				}
+			}
+			if match {
+				filtered = append(filtered, invoice)
+			}
+		}
+
+		// Apply pagination
+		paginated := paginateResults(filtered, params.Page, params.PageSize)
+		respondJSON(w, paginated)
+
+	case http.MethodPost:
+		var invoice Invoice
+		if err := json.NewDecoder(r.Body).Decode(&invoice); err != nil {
+			http.Error(w, "invalid input", http.StatusBadRequest)
+			return
+		}
+
+		// Generate invoice number if not provided
+		if invoice.InvoiceNumber == "" {
+			invoice.InvoiceNumber = fmt.Sprintf("INV-%d", rand.Intn(1000000))
+		}
+
+		// Set default dates if not provided
+		if invoice.IssueDate.IsZero() {
+			invoice.IssueDate = time.Now()
+		}
+		if invoice.DueDate.IsZero() {
+			invoice.DueDate = invoice.IssueDate.AddDate(0, 0, 30) // 30 days from issue date
+		}
+
+		// Calculate totals
+		invoice.Subtotal = 0
+		invoice.TotalTax = 0
+		for i := range invoice.LineItems {
+			item := &invoice.LineItems[i]
+			item.TotalPrice = item.UnitPrice * float64(item.Quantity)
+			invoice.Subtotal += item.TotalPrice
+
+			// Calculate tax for each line item
+			itemTax := 0.0
+			for j := range item.TaxInfo {
+				tax := &item.TaxInfo[j]
+				tax.TaxAmount = item.TotalPrice * (tax.TaxRate / 100)
+				itemTax += tax.TaxAmount
+			}
+			invoice.TotalTax += itemTax
+		}
+
+		invoice.Total = invoice.Subtotal + invoice.TotalTax
+		invoice.ID = rand.Intn(10000)
+		invoices = append(invoices, invoice)
+		respondJSON(w, invoice)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleInvoiceByID(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/invoices/")
+
+	// Validate ID format
+	if idStr == "" || !isValidID(idStr) {
+		http.Error(w, "invalid invoice ID format", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid invoice ID format", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		for _, invoice := range invoices {
+			if invoice.ID == id {
+				respondJSON(w, invoice)
+				return
+			}
+		}
+		http.NotFound(w, r)
+	case http.MethodDelete:
+		for i, invoice := range invoices {
+			if invoice.ID == id {
+				invoices = append(invoices[:i], invoices[i+1:]...)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		http.NotFound(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 

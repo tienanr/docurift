@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 var baseURL = getBaseURL()
@@ -846,6 +847,273 @@ func TestReviewURLParameters(t *testing.T) {
 		}
 		if len(result) != 2 {
 			t.Errorf("Expected 2 reviews, got %d", len(result))
+		}
+	})
+}
+
+func TestInvoices(t *testing.T) {
+	// Create test products first
+	products := []Product{
+		{Name: "Laptop", Price: 999.99, Category: "Electronics", InStock: true},
+		{Name: "Mouse", Price: 29.99, Category: "Electronics", InStock: true},
+	}
+
+	for _, p := range products {
+		productJSON, _ := json.Marshal(p)
+		resp, err := http.Post(baseURL+"/products", "application/json", bytes.NewBuffer(productJSON))
+		if err != nil {
+			t.Fatalf("Failed to create product: %v", err)
+		}
+		resp.Body.Close()
+	}
+
+	// Test creating an invoice
+	invoice := Invoice{
+		UserID:        1,
+		OrderID:       1,
+		InvoiceNumber: "INV-001",
+		IssueDate:     time.Now(),
+		DueDate:       time.Now().AddDate(0, 0, 30),
+		Status:        "pending",
+		LineItems: []LineItem{
+			{
+				ProductID:   1,
+				Quantity:    2,
+				UnitPrice:   999.99,
+				Description: "High-end laptop",
+				TaxInfo: []TaxInfo{
+					{
+						Jurisdiction: "CA",
+						TaxRate:      8.5,
+						Description:  "California State Tax",
+					},
+					{
+						Jurisdiction: "LA",
+						TaxRate:      2.0,
+						Description:  "Los Angeles County Tax",
+					},
+				},
+			},
+			{
+				ProductID:   2,
+				Quantity:    1,
+				UnitPrice:   29.99,
+				Description: "Wireless mouse",
+				TaxInfo: []TaxInfo{
+					{
+						Jurisdiction: "CA",
+						TaxRate:      8.5,
+						Description:  "California State Tax",
+					},
+				},
+			},
+		},
+		Notes:        "Net 30 payment terms",
+		PaymentTerms: "Due upon receipt",
+		Metadata: map[string]string{
+			"payment_method": "credit_card",
+			"currency":       "USD",
+		},
+	}
+
+	invoiceJSON, _ := json.Marshal(invoice)
+	resp, err := http.Post(baseURL+"/invoices", "application/json", bytes.NewBuffer(invoiceJSON))
+	if err != nil {
+		t.Fatalf("Failed to create invoice: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	// Decode the response to get the created invoice
+	var createdInvoice Invoice
+	if err := json.NewDecoder(resp.Body).Decode(&createdInvoice); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	resp.Body.Close()
+
+	// Verify the invoice calculations
+	expectedSubtotal := (999.99 * 2) + 29.99
+	if createdInvoice.Subtotal != expectedSubtotal {
+		t.Errorf("Expected subtotal %v, got %v", expectedSubtotal, createdInvoice.Subtotal)
+	}
+
+	// Calculate expected tax for laptop (2 items)
+	laptopTax := (999.99 * 2) * (0.085 + 0.02)
+	// Calculate expected tax for mouse (1 item)
+	mouseTax := 29.99 * 0.085
+	expectedTax := laptopTax + mouseTax
+
+	if createdInvoice.TotalTax != expectedTax {
+		t.Errorf("Expected total tax %v, got %v", expectedTax, createdInvoice.TotalTax)
+	}
+
+	expectedTotal := expectedSubtotal + expectedTax
+	if createdInvoice.Total != expectedTotal {
+		t.Errorf("Expected total %v, got %v", expectedTotal, createdInvoice.Total)
+	}
+
+	// Test getting the invoice by ID
+	resp, err = http.Get(fmt.Sprintf("%s/invoices/%d", baseURL, createdInvoice.ID))
+	if err != nil {
+		t.Fatalf("Failed to get invoice: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Test filtering invoices
+	resp, err = http.Get(fmt.Sprintf("%s/invoices?filter_user_id=1", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get filtered invoices: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Test pagination
+	resp, err = http.Get(fmt.Sprintf("%s/invoices?page=1&page_size=10", baseURL))
+	if err != nil {
+		t.Fatalf("Failed to get paginated invoices: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+func TestInvoiceURLParameters(t *testing.T) {
+	// Create test invoices with different statuses
+	invoices := []Invoice{
+		{
+			UserID:        1,
+			OrderID:       1,
+			Status:        "pending",
+			InvoiceNumber: "INV-001",
+			LineItems: []LineItem{
+				{
+					ProductID: 1,
+					Quantity:  1,
+					UnitPrice: 100.00,
+					TaxInfo: []TaxInfo{
+						{Jurisdiction: "CA", TaxRate: 8.5},
+					},
+				},
+			},
+		},
+		{
+			UserID:        1,
+			OrderID:       2,
+			Status:        "paid",
+			InvoiceNumber: "INV-002",
+			LineItems: []LineItem{
+				{
+					ProductID: 2,
+					Quantity:  2,
+					UnitPrice: 50.00,
+					TaxInfo: []TaxInfo{
+						{Jurisdiction: "NY", TaxRate: 8.875},
+					},
+				},
+			},
+		},
+		{
+			UserID:        2,
+			OrderID:       3,
+			Status:        "overdue",
+			InvoiceNumber: "INV-003",
+			LineItems: []LineItem{
+				{
+					ProductID: 3,
+					Quantity:  3,
+					UnitPrice: 75.00,
+					TaxInfo: []TaxInfo{
+						{Jurisdiction: "TX", TaxRate: 6.25},
+					},
+				},
+			},
+		},
+	}
+
+	// Create invoices first
+	for _, inv := range invoices {
+		invoiceJSON, _ := json.Marshal(inv)
+		resp, err := http.Post(baseURL+"/invoices", "application/json", bytes.NewBuffer(invoiceJSON))
+		if err != nil {
+			t.Fatalf("Failed to create invoice: %v", err)
+		}
+		resp.Body.Close()
+	}
+
+	// Test filtering by user
+	t.Run("FilterByUser", func(t *testing.T) {
+		resp := doGet(t, "/invoices?filter_user_id=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Invoice
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, inv := range result {
+			if inv.UserID != 1 {
+				t.Errorf("Invoice does not belong to user 1: %+v", inv)
+			}
+		}
+	})
+
+	// Test filtering by status
+	t.Run("FilterByStatus", func(t *testing.T) {
+		resp := doGet(t, "/invoices?filter_status=pending")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Invoice
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, inv := range result {
+			if inv.Status != "pending" {
+				t.Errorf("Invoice does not have status 'pending': %+v", inv)
+			}
+		}
+	})
+
+	// Test filtering by order
+	t.Run("FilterByOrder", func(t *testing.T) {
+		resp := doGet(t, "/invoices?filter_order_id=2")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Invoice
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		for _, inv := range result {
+			if inv.OrderID != 2 {
+				t.Errorf("Invoice does not belong to order 2: %+v", inv)
+			}
+		}
+	})
+
+	// Test pagination
+	t.Run("Pagination", func(t *testing.T) {
+		resp := doGet(t, "/invoices?page=1&page_size=2")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected 200, got %d", resp.StatusCode)
+		}
+		var result []Invoice
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+		if len(result) != 2 {
+			t.Errorf("Expected 2 invoices, got %d", len(result))
 		}
 	})
 }
