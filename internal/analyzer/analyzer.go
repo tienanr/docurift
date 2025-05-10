@@ -20,8 +20,9 @@ type SchemaStore struct {
 // NewSchemaStore creates a new SchemaStore
 func NewSchemaStore() *SchemaStore {
 	return &SchemaStore{
-		Examples: make(map[string][]interface{}),
-		Optional: make(map[string]bool),
+		Examples:    make(map[string][]interface{}),
+		Optional:    make(map[string]bool),
+		maxExamples: 10, // Set default max examples
 	}
 }
 
@@ -37,7 +38,7 @@ func (s *SchemaStore) AddValue(path string, value interface{}) {
 
 	// Check if value already exists
 	for _, v := range s.Examples[path] {
-		if v == value {
+		if areValuesEqual(v, value) {
 			return // Skip duplicate values
 		}
 	}
@@ -45,6 +46,59 @@ func (s *SchemaStore) AddValue(path string, value interface{}) {
 	// Add value if we haven't reached the limit
 	if len(s.Examples[path]) < s.maxExamples {
 		s.Examples[path] = append(s.Examples[path], value)
+	}
+}
+
+// areValuesEqual compares two interface{} values for equality
+func areValuesEqual(a, b interface{}) bool {
+	// Handle nil cases
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	switch v1 := a.(type) {
+	case map[string]interface{}:
+		// If a is a map, b must also be a map
+		v2, ok := b.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		if len(v1) != len(v2) {
+			return false
+		}
+		for k, val1 := range v1 {
+			val2, exists := v2[k]
+			if !exists {
+				return false
+			}
+			if !areValuesEqual(val1, val2) {
+				return false
+			}
+		}
+		return true
+
+	case []interface{}:
+		// If a is a slice, b must also be a slice
+		v2, ok := b.([]interface{})
+		if !ok {
+			return false
+		}
+		if len(v1) != len(v2) {
+			return false
+		}
+		for i := range v1 {
+			if !areValuesEqual(v1[i], v2[i]) {
+				return false
+			}
+		}
+		return true
+
+	default:
+		// For primitive types, use regular equality
+		return a == b
 	}
 }
 
@@ -107,7 +161,6 @@ var excludedHeaders = map[string]bool{
 	"Accept-Language":   true,
 	"User-Agent":        true,
 	"Host":              true,
-	"Authorization":     true,
 }
 
 // sensitivePatterns defines regex patterns for sensitive data
@@ -283,6 +336,10 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 
 // processJSONPayload recursively processes a JSON payload to extract schema paths
 func processJSONPayload(store *SchemaStore, basePath string, value interface{}) {
+	if basePath == "" && value == nil {
+		return
+	}
+
 	switch v := value.(type) {
 	case map[string]interface{}:
 		for key, val := range v {
@@ -291,17 +348,47 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 				newPath += "."
 			}
 			newPath += key
-			processJSONPayload(store, newPath, val)
+			if val == nil {
+				store.AddValue(newPath, nil)
+			} else {
+				processJSONPayload(store, newPath, val)
+			}
 		}
 	case []interface{}:
-		for _, val := range v {
-			processJSONPayload(store, basePath+"[]", val)
+		if len(v) == 0 {
+			store.AddValue(basePath+"[]", nil)
+			return
+		}
+
+		if isObjectArray(v) {
+			// For arrays of objects
+			for _, item := range v {
+				if obj, ok := item.(map[string]interface{}); ok {
+					for key, val := range obj {
+						arrayPath := basePath + "[]." + key
+						store.AddValue(arrayPath, val)
+					}
+				}
+			}
+		} else {
+			// For arrays of primitives
+			arrayPath := basePath + "[]"
+			for _, val := range v {
+				store.AddValue(arrayPath, val)
+			}
 		}
 	default:
-		// Sanitize the value before storing it
-		sanitizedValue := sanitizeValue(v)
-		store.AddValue(basePath, sanitizedValue)
+		store.AddValue(basePath, value)
 	}
+}
+
+// isObjectArray checks if an array contains objects
+func isObjectArray(arr []interface{}) bool {
+	if len(arr) == 0 {
+		return false
+	}
+	_, ok := arr[0].(map[string]interface{})
+	return ok
 }
 
 // GetData returns the current state of the analyzer
