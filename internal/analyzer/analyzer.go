@@ -1,7 +1,10 @@
 package analyzer
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -327,6 +330,15 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 
 	// Process response payload if present
 	if len(respBody) > 0 {
+		if resp.Header.Get("Content-Encoding") == "gzip" {
+			b := bytes.NewReader(respBody)
+			reader, err := gzip.NewReader(b)
+			defer reader.Close()
+			if err == nil {
+				respBody, _ = io.ReadAll(reader)
+			}
+		}
+
 		var payload interface{}
 		if err := json.Unmarshal(respBody, &payload); err == nil {
 			processJSONPayload(responseData.Payload, "", payload)
