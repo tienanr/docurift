@@ -40,22 +40,25 @@ go install github.com/tienanr/docurift@latest
 ```bash
 docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
 ```
+Note: backend url should be where your backend is running.
 
-2. Start your API server (example using the included shop API) on port 8080:
+2. Clone this git repo (to run example)
 ```bash
-# Build and run the example API
-cd examples/shop
-go run shop.go
+git clone git@github.com:tienanr/docurift.git
 ```
 
-3. Make requests to your API through DocuRift:
+2. Start your API server (example using the included shop API) on port 8080 and send test traffic:
 ```bash
-go test ./examples/shop
+cd docurift/examples/shop
+lsof -ti :8080 | xargs kill
+go run shop.go &
+sleep 3
+go test -count=1 .
 ```
 
-4. Access your automatically generated documentation at `http://localhost:9877/` (Swagger UI)
+3. Access your automatically generated documentation at http://localhost:9877/ (Swagger UI)
 
-5. Get open API spec: `http://localhost:9877/openapi.json` and Postman Collection: `http://localhost:9877/postman.json`
+4. Get open API spec: http://localhost:9877/openapi.json and Postman Collection: http://localhost:9877/postman.json
 
 ## Configuration Options
 
@@ -65,7 +68,7 @@ go test ./examples/shop
 - `-max-examples`: Maximum number of examples per endpoint (default: 10)
 
 ## Examples
-
+`
 Check out the `examples` directory for sample implementations:
 - `examples/shop`: A complete e-commerce API with various endpoints
 
