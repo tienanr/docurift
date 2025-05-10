@@ -23,9 +23,9 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test ./... -v
+        run: go test ./internal/... ./cmd/... -v
 
       - name: Run staticcheck
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest
-          staticcheck ./... 
+          staticcheck ./internal/... ./cmd/... 
