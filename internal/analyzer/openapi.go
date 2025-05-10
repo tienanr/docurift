@@ -486,6 +486,8 @@ func buildObjectSchemaFromStore(store *SchemaStore) Schema {
 				}
 				if cur != nil && cur.path != "" {
 					fullPath = cur.path
+				} else if len(pathParts) > 0 {
+					fullPath = strings.Join(pathParts, ".")
 				}
 			}
 			if fullPath != "" && !store.Optional[fullPath] {
