@@ -278,123 +278,74 @@ func (a *Analyzer) GenerateOpenAPI() *OpenAPI {
 
 // generateSchemaFromStore generates OpenAPI schema from SchemaStore
 func generateSchemaFromStore(store *SchemaStore) Schema {
-	// First pass: collect all paths and their parts
-	paths := make(map[string][]string)
+	if store == nil || len(store.Examples) == 0 {
+		return Schema{Type: "object"}
+	}
+
+	// DEBUG: Print the keys for diagnosis
+	fmt.Println("DEBUG: generateSchemaFromStore keys:", store.Examples)
+
+	// Collect all top-level keys' prefixes
+	var (
+		arrayKey string
+		allArray = true
+		first    = true
+	)
 	for path := range store.Examples {
-		if path == "" {
-			continue
-		}
 		parts := strings.Split(path, ".")
-		paths[path] = parts
-	}
-
-	// If we have array paths, create an array schema
-	if len(paths) > 0 {
-		// Get the first path to check if it's an array
-		var firstPath string
-		for p := range paths {
-			firstPath = p
-			break
-		}
-		parts := strings.Split(firstPath, ".")
-		if strings.HasSuffix(parts[0], "[]") {
-			// Create array schema
-			arraySchema := Schema{
-				Type: "array",
-				Items: &Schema{
-					Type:       "object",
-					Properties: make(map[string]Schema),
-				},
-			}
-
-			// Add properties to the array items schema
-			for path, parts := range paths {
-				fieldName := strings.TrimSuffix(parts[0], "[]")
-				if len(parts) > 1 {
-					fieldName = parts[1]
+		if len(parts) > 0 {
+			if strings.HasSuffix(parts[0], "[]") {
+				if first {
+					arrayKey = parts[0]
+					first = false
+				} else if parts[0] != arrayKey {
+					allArray = false
+					break
 				}
+			} else {
+				allArray = false
+				break
+			}
+		}
+	}
+	fmt.Println("DEBUG: arrayKey=", arrayKey, "allArray=", allArray)
 
-				// Create property schema
-				examples := store.Examples[path]
-				if len(examples) > 0 {
-					propertySchema := createPropertySchema(examples)
-					// Add to array items schema
-					arraySchema.Items.Properties[fieldName] = propertySchema
-
-					// Add to required fields if not optional
-					if !store.Optional[path] {
-						arraySchema.Items.Required = append(arraySchema.Items.Required, fieldName)
+	// Only treat as root array if all top-level keys start with the same array key
+	if arrayKey != "" && allArray {
+		itemStore := &SchemaStore{
+			Examples: make(map[string][]interface{}),
+			Optional: make(map[string]bool),
+		}
+		for path, examples := range store.Examples {
+			parts := strings.Split(path, ".")
+			if len(parts) > 1 {
+				if strings.HasSuffix(parts[0], "[]") {
+					newPath := strings.Join(parts[1:], ".")
+					itemStore.Examples[newPath] = examples
+					if optional, exists := store.Optional[path]; exists {
+						itemStore.Optional[newPath] = optional
 					}
 				}
 			}
-
-			return arraySchema
 		}
+		itemSchema := buildObjectSchemaFromStore(itemStore)
+		if itemSchema.Type == "" {
+			itemSchema.Type = "object"
+		}
+		if itemSchema.Type == "object" && itemSchema.Properties == nil {
+			itemSchema.Properties = make(map[string]Schema)
+		}
+		fmt.Printf("DEBUG: itemSchema for array: %+v\n", itemSchema)
+		schema := Schema{
+			Type:  "array",
+			Items: &itemSchema,
+		}
+		fmt.Println("DEBUG: Returning array schema:", schema)
+		return schema
 	}
 
-	// Handle regular object schema
-	schema := Schema{
-		Type:       "object",
-		Properties: make(map[string]Schema),
-	}
-
-	// Group paths by their first part to handle nested objects
-	groupedPaths := make(map[string]map[string][]string)
-	for _, parts := range paths {
-		firstPart := parts[0]
-		if _, exists := groupedPaths[firstPart]; !exists {
-			groupedPaths[firstPart] = make(map[string][]string)
-		}
-		// Store the remaining parts for nested objects
-		if len(parts) > 1 {
-			groupedPaths[firstPart][strings.Join(parts[1:], ".")] = parts[1:]
-		} else {
-			groupedPaths[firstPart][""] = parts
-		}
-	}
-
-	// Add properties to the schema
-	for fieldName, nestedPaths := range groupedPaths {
-		// Check if this is a nested object
-		if len(nestedPaths) > 1 || (len(nestedPaths) == 1 && nestedPaths[""] == nil) {
-			// Create a nested object schema
-			nestedSchema := Schema{
-				Type:       "object",
-				Properties: make(map[string]Schema),
-			}
-
-			// Process nested paths
-			for nestedPath, parts := range nestedPaths {
-				if nestedPath == "" {
-					continue // Skip empty paths
-				}
-				examples := store.Examples[fieldName+"."+nestedPath]
-				if len(examples) > 0 {
-					propertySchema := createPropertySchema(examples)
-					nestedSchema.Properties[parts[0]] = propertySchema
-
-					if !store.Optional[fieldName+"."+nestedPath] {
-						nestedSchema.Required = append(nestedSchema.Required, parts[0])
-					}
-				}
-			}
-
-			schema.Properties[fieldName] = nestedSchema
-		} else {
-			// Handle regular field
-			examples := store.Examples[fieldName]
-			if len(examples) > 0 {
-				propertySchema := createPropertySchema(examples)
-				schema.Properties[fieldName] = propertySchema
-
-				if !store.Optional[fieldName] {
-					schema.Required = append(schema.Required, fieldName)
-				}
-			}
-		}
-	}
-
-	return schema
+	// Otherwise, build as an object
+	return buildObjectSchemaFromStore(store)
 }
 
 // createPropertySchema creates a schema for a property based on its examples
@@ -432,4 +383,123 @@ func createPropertySchema(examples []interface{}) Schema {
 		propertySchema.Examples = examples
 	}
 	return propertySchema
+}
+
+// buildObjectSchemaFromStore builds an object schema from a SchemaStore
+func buildObjectSchemaFromStore(store *SchemaStore) Schema {
+	type node struct {
+		children map[string]*node
+		leaf     bool
+		path     string
+	}
+
+	root := &node{children: make(map[string]*node)}
+
+	// Build the tree
+	for path := range store.Examples {
+		parts := strings.Split(path, ".")
+		cur := root
+		for i, part := range parts {
+			if _, ok := cur.children[part]; !ok {
+				cur.children[part] = &node{children: make(map[string]*node)}
+			}
+			cur = cur.children[part]
+			if i == len(parts)-1 {
+				cur.leaf = true
+				cur.path = path
+			}
+		}
+	}
+
+	var build func(n *node, isRoot bool) Schema
+	build = func(n *node, isRoot bool) Schema {
+		if n.leaf {
+			examples := store.Examples[n.path]
+			return createPropertySchema(examples)
+		}
+
+		// Only check for all-arrays if not at root
+		if !isRoot {
+			allArrays := true
+			for k := range n.children {
+				if !strings.HasSuffix(k, "[]") {
+					allArrays = false
+					break
+				}
+			}
+			if allArrays && len(n.children) > 0 {
+				objSchema := Schema{
+					Type:       "object",
+					Properties: make(map[string]Schema),
+				}
+				for k, child := range n.children {
+					name := strings.TrimSuffix(k, "[]")
+					childSchema := build(child, false)
+					if childSchema.Type == "" {
+						childSchema.Type = "object"
+					}
+					objSchema.Properties[name] = Schema{
+						Type:  "array",
+						Items: &childSchema,
+					}
+				}
+				return objSchema
+			}
+		}
+
+		// Otherwise, it's an object node
+		objSchema := Schema{
+			Type:       "object",
+			Properties: make(map[string]Schema),
+		}
+
+		for k, child := range n.children {
+			name := k
+			if strings.HasSuffix(name, "[]") {
+				name = strings.TrimSuffix(name, "[]")
+				childSchema := build(child, false)
+				if childSchema.Type == "" {
+					childSchema.Type = "object"
+				}
+				objSchema.Properties[name] = Schema{
+					Type:  "array",
+					Items: &childSchema,
+				}
+			} else {
+				childSchema := build(child, false)
+				if childSchema.Type == "" {
+					childSchema.Type = "object"
+				}
+				objSchema.Properties[name] = childSchema
+			}
+
+			fullPath := child.path
+			if fullPath == "" {
+				var pathParts []string
+				cur := child
+				for cur != nil && cur.path == "" && len(cur.children) == 1 {
+					for kk := range cur.children {
+						pathParts = append(pathParts, kk)
+						cur = cur.children[kk]
+						break
+					}
+				}
+				if cur != nil && cur.path != "" {
+					fullPath = cur.path
+				}
+			}
+			if fullPath != "" && !store.Optional[fullPath] {
+				objSchema.Required = append(objSchema.Required, name)
+			}
+		}
+		fmt.Printf("DEBUG: build object node: %+v\n", objSchema)
+		return objSchema
+	}
+
+	schema := build(root, true)
+	if schema.Type == "" {
+		schema.Type = "object"
+	}
+	fmt.Println("DEBUG: Returning object schema:", schema)
+	return schema
 }
