@@ -282,9 +282,6 @@ func generateSchemaFromStore(store *SchemaStore) Schema {
 		return Schema{Type: "object"}
 	}
 
-	// DEBUG: Print the keys for diagnosis
-	fmt.Println("DEBUG: generateSchemaFromStore keys:", store.Examples)
-
 	// Collect all top-level keys' prefixes
 	var (
 		arrayKey string
@@ -308,7 +305,6 @@ func generateSchemaFromStore(store *SchemaStore) Schema {
 			}
 		}
 	}
-	fmt.Println("DEBUG: arrayKey=", arrayKey, "allArray=", allArray)
 
 	// Only treat as root array if all top-level keys start with the same array key
 	if arrayKey != "" && allArray {
@@ -335,12 +331,10 @@ func generateSchemaFromStore(store *SchemaStore) Schema {
 		if itemSchema.Type == "object" && itemSchema.Properties == nil {
 			itemSchema.Properties = make(map[string]Schema)
 		}
-		fmt.Printf("DEBUG: itemSchema for array: %+v\n", itemSchema)
 		schema := Schema{
 			Type:  "array",
 			Items: &itemSchema,
 		}
-		fmt.Println("DEBUG: Returning array schema:", schema)
 		return schema
 	}
 
@@ -494,7 +488,6 @@ func buildObjectSchemaFromStore(store *SchemaStore) Schema {
 				objSchema.Required = append(objSchema.Required, name)
 			}
 		}
-		fmt.Printf("DEBUG: build object node: %+v\n", objSchema)
 		return objSchema
 	}
 
@@ -502,6 +495,5 @@ func buildObjectSchemaFromStore(store *SchemaStore) Schema {
 	if schema.Type == "" {
 		schema.Type = "object"
 	}
-	fmt.Println("DEBUG: Returning object schema:", schema)
 	return schema
 }

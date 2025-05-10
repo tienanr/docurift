@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -394,7 +393,6 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 			}
 			newPath += key
 			if val == nil {
-				fmt.Printf("AddValue: %s = nil\n", newPath)
 				store.AddValue(newPath, nil)
 			} else {
 				processJSONPayload(store, newPath, val)
@@ -403,7 +401,6 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 	case []interface{}:
 		if len(v) == 0 {
 			if basePath != "" && !strings.Contains(basePath, "]") {
-				fmt.Printf("AddValue: %s[] = nil\n", basePath)
 				store.AddValue(basePath+"[]", nil)
 			}
 			return
@@ -418,13 +415,11 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 			arrayPath := basePath + "[]"
 			for _, val := range v {
 				if basePath != "" && !strings.Contains(basePath, "]") {
-					fmt.Printf("AddValue: %s = %v\n", arrayPath, val)
 					store.AddValue(arrayPath, val)
 				}
 			}
 		}
 	default:
-		fmt.Printf("AddValue: %s = %v\n", basePath, value)
 		store.AddValue(basePath, value)
 	}
 }
