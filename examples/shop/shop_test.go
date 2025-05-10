@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -944,12 +945,14 @@ func TestInvoices(t *testing.T) {
 	mouseTax := 29.99 * 0.085
 	expectedTax := laptopTax + mouseTax
 
-	if createdInvoice.TotalTax != expectedTax {
+	// Use epsilon for floating-point comparison
+	const epsilon = 0.000001
+	if math.Abs(createdInvoice.TotalTax-expectedTax) > epsilon {
 		t.Errorf("Expected total tax %v, got %v", expectedTax, createdInvoice.TotalTax)
 	}
 
 	expectedTotal := expectedSubtotal + expectedTax
-	if createdInvoice.Total != expectedTotal {
+	if math.Abs(createdInvoice.Total-expectedTotal) > epsilon {
 		t.Errorf("Expected total %v, got %v", expectedTotal, createdInvoice.Total)
 	}
 
