@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -99,8 +100,40 @@ func areValuesEqual(a, b interface{}) bool {
 		}
 		return true
 
+	case float64:
+		// Handle float64 specifically to avoid precision issues
+		v2, ok := b.(float64)
+		if !ok {
+			return false
+		}
+		return v1 == v2
+
+	case int:
+		// Handle int specifically
+		v2, ok := b.(int)
+		if !ok {
+			return false
+		}
+		return v1 == v2
+
+	case string:
+		// Handle string specifically
+		v2, ok := b.(string)
+		if !ok {
+			return false
+		}
+		return v1 == v2
+
+	case bool:
+		// Handle bool specifically
+		v2, ok := b.(bool)
+		if !ok {
+			return false
+		}
+		return v1 == v2
+
 	default:
-		// For primitive types, use regular equality
+		// For other types, use type assertion and direct comparison
 		return a == b
 	}
 }
@@ -361,6 +394,7 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 			}
 			newPath += key
 			if val == nil {
+				fmt.Printf("AddValue: %s = nil\n", newPath)
 				store.AddValue(newPath, nil)
 			} else {
 				processJSONPayload(store, newPath, val)
@@ -368,28 +402,29 @@ func processJSONPayload(store *SchemaStore, basePath string, value interface{}) 
 		}
 	case []interface{}:
 		if len(v) == 0 {
-			store.AddValue(basePath+"[]", nil)
+			if basePath != "" && !strings.Contains(basePath, "]") {
+				fmt.Printf("AddValue: %s[] = nil\n", basePath)
+				store.AddValue(basePath+"[]", nil)
+			}
 			return
 		}
 
 		if isObjectArray(v) {
-			// For arrays of objects
+			// Recursively process each object in the array with the correct path
 			for _, item := range v {
-				if obj, ok := item.(map[string]interface{}); ok {
-					for key, val := range obj {
-						arrayPath := basePath + "[]." + key
-						store.AddValue(arrayPath, val)
-					}
-				}
+				processJSONPayload(store, basePath+"[]", item)
 			}
 		} else {
-			// For arrays of primitives
 			arrayPath := basePath + "[]"
 			for _, val := range v {
-				store.AddValue(arrayPath, val)
+				if basePath != "" && !strings.Contains(basePath, "]") {
+					fmt.Printf("AddValue: %s = %v\n", arrayPath, val)
+					store.AddValue(arrayPath, val)
+				}
 			}
 		}
 	default:
+		fmt.Printf("AddValue: %s = %v\n", basePath, value)
 		store.AddValue(basePath, value)
 	}
 }

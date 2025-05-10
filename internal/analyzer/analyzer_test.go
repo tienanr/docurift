@@ -305,6 +305,77 @@ func TestProcessJSONPayload(t *testing.T) {
 				"tags[]": {"tag1", "tag2", "tag3"},
 			},
 		},
+		{
+			name: "deep nested arrays of objects",
+			payload: map[string]interface{}{
+				"invoices": []interface{}{
+					map[string]interface{}{
+						"id": 1,
+						"line_items": []interface{}{
+							map[string]interface{}{
+								"product_id": 1,
+								"quantity":   2,
+								"unit_price": 999.99,
+								"tax_info": []interface{}{
+									map[string]interface{}{
+										"jurisdiction": "CA",
+										"tax_rate":     8.5,
+										"description":  "California State Tax",
+									},
+									map[string]interface{}{
+										"jurisdiction": "LA",
+										"tax_rate":     2.0,
+										"description":  "Los Angeles County Tax",
+									},
+								},
+							},
+							map[string]interface{}{
+								"product_id": 2,
+								"quantity":   1,
+								"unit_price": 29.99,
+								"tax_info": []interface{}{
+									map[string]interface{}{
+										"jurisdiction": "CA",
+										"tax_rate":     8.5,
+										"description":  "California State Tax",
+									},
+								},
+							},
+						},
+					},
+					map[string]interface{}{
+						"id": 2,
+						"line_items": []interface{}{
+							map[string]interface{}{
+								"product_id": 3,
+								"quantity":   3,
+								"unit_price": 75.00,
+								"tax_info": []interface{}{
+									map[string]interface{}{
+										"jurisdiction": "TX",
+										"tax_rate":     6.25,
+										"description":  "Texas State Tax",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: map[string][]interface{}{
+				"invoices[].id":                                   {1, 2},
+				"invoices[].line_items[].product_id":              {1, 2, 3},
+				"invoices[].line_items[].quantity":                {2, 1, 3},
+				"invoices[].line_items[].unit_price":              {999.99, 29.99, 75.00},
+				"invoices[].line_items[].tax_info[].jurisdiction": {"CA", "LA", "TX"},
+				"invoices[].line_items[].tax_info[].tax_rate":     {8.5, 2.0, 6.25},
+				"invoices[].line_items[].tax_info[].description": {
+					"California State Tax",
+					"Los Angeles County Tax",
+					"Texas State Tax",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
