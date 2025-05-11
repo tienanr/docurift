@@ -30,26 +30,30 @@ sequenceDiagram
 
 ## Installation
 
+### Installing from Source Code
+1. Clone the repository:
 ```bash
-go install github.com/tienanr/docurift@latest
+git clone https://github.com/tienanr/docurift.git
+cd docurift
+```
+
+2. Build and install:
+```bash
+go build
+go install
 ```
 
 ## Quick Start
 
 1. Start DocuRift with your desired configuration:
 ```bash
-docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
+./bin/docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
 ```
 Note: backend url should be where your backend is running.
 
-2. Clone this git repo (to run example)
-```bash
-git clone git@github.com:tienanr/docurift.git
-```
-
 2. Start your API server (example using the included shop API) on port 8080 and send test traffic:
 ```bash
-cd docurift/examples/shop
+cd examples/shop
 lsof -ti :8080 | xargs kill
 go run shop.go &
 sleep 3
