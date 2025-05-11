@@ -39,15 +39,15 @@ cd docurift
 
 2. Build and install:
 ```bash
-go build
-go install
+go build ./cmd/docurift
+go install ./cmd/docurift
 ```
 
 ## Quick Start
 
 1. Start DocuRift with your desired configuration:
 ```bash
-./bin/docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
+./docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
 ```
 Note: backend url should be where your backend is running.
 
