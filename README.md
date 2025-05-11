@@ -31,16 +31,11 @@ sequenceDiagram
 ## Installation
 
 ### Installing from Source Code
-1. Clone the repository:
-```bash
-git clone https://github.com/tienanr/docurift.git
-cd docurift
-```
 
-2. Build and install:
+Clone, build and install into $GOBIN ($GOPATH/bin or $HOME/go/bin):
+
 ```bash
-go build ./cmd/docurift
-go install ./cmd/docurift
+go install github.com/tienanr/docurift/cmd/docurift@latest
 ```
 
 ## Quick Start
