@@ -1,0 +1,23 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+# Install git if needed for go mod
+RUN apk add --no-cache git
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy go.mod and go.sum for dependency resolution
+COPY ../../go.mod ../../go.sum ./
+RUN go mod download
+
+# Copy the shop example source code
+COPY ../../examples/shop/shop.go ./
+
+# Build the shop API
+RUN go build -o shop shop.go
+
+EXPOSE 8080
+
+CMD ["/app/shop"] 

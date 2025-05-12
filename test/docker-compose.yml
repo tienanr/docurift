@@ -1,54 +1,52 @@
-version: '3.8'
-
 services:
   backend:
     build:
-      context: .
-      dockerfile: examples/online_store/Dockerfile
+      context: ..
+      dockerfile: test/Dockerfile.shop
     ports:
-      - "8081:8081"
+      - "8080:8080"
     networks:
       - docurift-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   docurift:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: test/Dockerfile.docurift
     ports:
-      - "8080:8080"
-      - "8082:8082"
+      - "9876:9876"
+      - "9877:9877"
     environment:
       - CONFIG_PATH=/app/config.yaml
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ../config.yaml:/app/config.yaml:ro
     networks:
       - docurift-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:9877/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       backend:
         condition: service_healthy
 
   test:
     build:
-      context: .
+      context: ..
       dockerfile: test/Dockerfile
     volumes:
       - ./test:/app/test
     environment:
-      - BACKEND_URL=http://backend:8081
-      - PROXY_URL=http://docurift:8080
-      - ANALYZER_URL=http://docurift:8082
+      - BACKEND_URL=http://backend:8080
+      - PROXY_URL=http://docurift:9876
+      - ANALYZER_URL=http://docurift:9877
     networks:
       - docurift-network
     depends_on:

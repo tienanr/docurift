@@ -1,0 +1,21 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+# Install git if needed for go mod
+RUN apk add --no-cache git
+
+# Copy go.mod and go.sum for dependency resolution
+COPY ../../go.mod ../../go.sum ./
+RUN go mod download
+
+# Copy the DocuRift source code
+COPY ../../cmd/docurift ./cmd/docurift
+COPY ../../internal/analyzer ./internal/analyzer
+
+# Build DocuRift
+RUN go build -o docurift ./cmd/docurift
+
+EXPOSE 9876 9877
+
+CMD ["/app/docurift", "-proxy-port", "9876", "-analyzer-port", "9877", "-backend-url", "http://backend:8080", "-max-examples", "20"] 

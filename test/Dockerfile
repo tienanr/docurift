@@ -3,12 +3,11 @@ FROM golang:1.24-alpine
 WORKDIR /app
 
 # Install dependencies
-RUN apk add --no-cache curl jq
+RUN apk add --no-cache curl jq diffutils
 
-# Copy only the necessary files
-COPY test/backend/backend.go test/backend/
-COPY test/backend/backend_test.go test/backend/
+# Copy test files
 COPY test/run_tests.sh /usr/local/bin/run_tests.sh
+COPY test/expected_openapi.json /app/expected_openapi.json
 COPY go.mod go.sum ./
 
 RUN chmod +x /usr/local/bin/run_tests.sh
