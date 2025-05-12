@@ -3,7 +3,7 @@ FROM golang:1.24-alpine
 WORKDIR /app
 
 # Install git if needed for go mod
-RUN apk add --no-cache git
+RUN apk add --no-cache git curl
 
 # Copy go.mod and go.sum for dependency resolution
 COPY ../../go.mod ../../go.sum ./

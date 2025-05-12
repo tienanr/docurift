@@ -28,7 +28,7 @@ services:
     networks:
       - docurift-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9877/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9876/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,6 +49,9 @@ services:
       - ANALYZER_URL=http://docurift:9877
     networks:
       - docurift-network
+    depends_on:
+      docurift:
+        condition: service_healthy
 
 networks:
   docurift-network:
