@@ -20,7 +20,7 @@ done
 echo "Running tests..."
 
 # Run the test suite
-go test -v ./test/...
+go test -v ./shop
 
 echo "Fetching OpenAPI specification..."
 

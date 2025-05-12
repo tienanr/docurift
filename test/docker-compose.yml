@@ -49,9 +49,6 @@ services:
       - ANALYZER_URL=http://docurift:9877
     networks:
       - docurift-network
-    depends_on:
-      docurift:
-        condition: service_healthy
 
 networks:
   docurift-network:
