@@ -383,6 +383,9 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 			Headers: NewSchemaStore(),
 			Payload: NewSchemaStore(),
 		}
+		// Set analyzer reference for response schema stores
+		responseData.Headers.SetAnalyzer(a)
+		responseData.Payload.SetAnalyzer(a)
 		endpoint.ResponseStatuses[status] = responseData
 	}
 	a.mu.Unlock()
