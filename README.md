@@ -40,13 +40,23 @@ go install github.com/tienanr/docurift/cmd/docurift@latest
 
 ## Quick Start
 
-1. Start DocuRift with your desired configuration:
-```bash
-./docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20
-```
-Note: backend url should be where your backend is running.
+1. Create a configuration file (e.g., `config.yaml`):
+```yaml
+proxy:
+    port: 9876
+    backend-url: http://localhost:8080
 
-2. Start your API server (example using the included shop API) on port 8080 and send test traffic:
+analyzer:
+    port: 9877
+    max-examples: 20
+```
+
+2. Start DocuRift with your configuration:
+```bash
+docurift -config config.yaml
+```
+
+3. Start your API server (example using the included shop API) on port 8080 and send test traffic:
 ```bash
 cd examples/shop
 lsof -ti :8080 | xargs kill
@@ -55,19 +65,35 @@ sleep 3
 go test -count=1 .
 ```
 
-3. Access your automatically generated documentation at http://localhost:9877/ (Swagger UI)
+4. Access your automatically generated documentation at http://localhost:9877/ (Swagger UI)
 
-4. Get open API spec: http://localhost:9877/openapi.json and Postman Collection: http://localhost:9877/postman.json
+5. Get open API spec: http://localhost:9877/openapi.json and Postman Collection: http://localhost:9877/postman.json
 
-## Configuration Options
+## Configuration
 
-- `-proxy-port`: Proxy server port (default: 9876)
-- `-analyzer-port`: Analyzer server port (default: 9877)
-- `-backend-url`: Backend API URL (default: http://localhost:8080)
-- `-max-examples`: Maximum number of examples per endpoint (default: 10)
+DocuRift uses a YAML configuration file to control its behavior. Here's the complete configuration reference:
+
+### Proxy Section
+- `port`: The port number that DocuRift's proxy server will listen on (e.g. 9876), point your clients request to this port instead of the real backend.
+- `backend-url`: The URL of your backend service that DocuRift will forward requests to.
+
+### Analyzer Section  
+- `port`: The port number for DocuRift's analyzer API endpoint (e.g. 9877)
+- `max-examples`: Maximum number of example values to store for each field in the schema
+
+Example configuration:
+```yaml
+proxy:
+    port: 9876
+    backend-url: http://localhost:8080
+
+analyzer:
+    port: 9877
+    max-examples: 10
+```
 
 ## Examples
-`
+
 Check out the `examples` directory for sample implementations:
 - `examples/shop`: A complete e-commerce API with various endpoints
 
