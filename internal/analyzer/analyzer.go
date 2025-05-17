@@ -242,8 +242,6 @@ var sensitivePatterns = map[string]string{
 	`^[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}$`: "4111-1111-1111-1111",
 	// SSN pattern
 	`^[0-9]{3}[- ]?[0-9]{2}[- ]?[0-9]{4}$`: "123-45-6789",
-	// Password pattern (any string containing "password" or "pass" or "pwd")
-	`(?i).*(password|pass|pwd).*`: "********",
 }
 
 // sanitizeValue replaces sensitive data with dummy values

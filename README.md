@@ -49,6 +49,8 @@ proxy:
 analyzer:
     port: 9877
     max-examples: 20
+    redacted-fields:
+        - password
 ```
 
 2. Start DocuRift with your configuration:
@@ -80,6 +82,8 @@ DocuRift uses a YAML configuration file to control its behavior. Here's the comp
 ### Analyzer Section  
 - `port`: The port number for DocuRift's analyzer API endpoint (e.g. 9877)
 - `max-examples`: Maximum number of example values to store for each field in the schema
+- `redacted-fields`: A list of fields to redact in the documentation. Their values will be shown as "REDACTED" (e.g. authorization headers, API keys, passwords). This applies globally to HTTP headers, URL parameters and JSON fields.
+
 
 Example configuration:
 ```yaml
