@@ -16,3 +16,5 @@ require (
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
+
+tool honnef.co/go/tools/cmd/staticcheck
