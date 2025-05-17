@@ -29,7 +29,7 @@ jobs:
 
       - name: Run staticcheck
         run: |
-          go tool honnef.co/go/tools/cmd/staticcheck ./internal/... ./cmd/...
+          go tool $HOME/go/bin/staticcheck ./internal/... ./cmd/...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
