@@ -47,8 +47,6 @@ dockers:
       - "ghcr.io/tienanr/docurift:latest"
     dockerfile: Dockerfile
     use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64,linux/arm64"
     extra_files:
       - config.yaml
       - go.mod
