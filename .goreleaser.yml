@@ -63,4 +63,8 @@ changelog:
       - '^test:'
       - '^ci:'
       - Merge pull request
-      - Merge branch 
+      - Merge branch
+
+publish:
+  - provider: github
+    token: ${{ secrets.GITHUB_TOKEN }} 
