@@ -3,6 +3,10 @@
 # Exit on error
 set -e
 
+# Set default values for environment variables
+BACKEND_URL=${BACKEND_URL:-"http://backend:8080"}
+ANALYZER_URL=${ANALYZER_URL:-"http://docurift:9877"}
+
 echo "Waiting for services to be ready..."
 
 # Wait for backend

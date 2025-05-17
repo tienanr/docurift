@@ -6,9 +6,9 @@ WORKDIR /app
 RUN apk add --no-cache curl jq diffutils
 
 # Copy test files
-
 COPY test/run_tests.sh /usr/local/bin/run_tests.sh
 COPY test/expected_openapi.json /app/expected_openapi.json
+COPY test/config.yaml /app/config.yaml
 COPY go.mod go.sum ./
 COPY examples/shop/ ./shop
 
