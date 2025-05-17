@@ -38,6 +38,17 @@ Clone, build and install into $GOBIN ($GOPATH/bin or $HOME/go/bin):
 go install github.com/tienanr/docurift/cmd/docurift@latest
 ```
 
+### Or Using Docker
+
+Pull and run the latest version:
+
+```bash
+docker pull ghcr.io/tienanr/docurift:latest
+docker run -p 9876:9876 -p 9877:9877 -v $(pwd)/config.yaml:/etc/docurift/config.yaml ghcr.io/tienanr/docurift:latest
+```
+
+See [docs/configuration.md](docs/configuration.md) for details about config file.
+
 ## Quick Start
 
 1. Create a configuration file (e.g., `config.yaml`):
@@ -57,10 +68,19 @@ analyzer:
 ```bash
 docurift -config config.yaml
 ```
-
-3. Start your API server (example using the included shop API) on port 8080 and send test traffic:
+or
 ```bash
-cd examples/shop
+docker run -p 9876:9876 -p 9877:9877 -v $(pwd)/config.yaml:/etc/docurift/config.yaml ghcr.io/tienanr/docurift:latest
+```
+
+3. Clone the examples repository to test DocuRift:
+```bash
+git clone https://github.com/tienanr/docurift.git 
+cd docurift/examples/shop
+```
+
+4. Start your API server (example using the included shop API) on port 8080 and send test traffic:
+```bash
 lsof -ti :8080 | xargs kill
 go run shop.go &
 sleep 3

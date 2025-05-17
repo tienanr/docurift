@@ -41,6 +41,22 @@ archives:
       - config.yaml
       - examples/
 
+dockers:
+  - image_templates:
+      - "ghcr.io/tienanr/docurift:{{ .Version }}"
+      - "ghcr.io/tienanr/docurift:latest"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--platform=linux/arm64"
+    extra_files:
+      - config.yaml
+      - go.mod
+      - go.sum
+      - cmd/
+      - internal/
+
 changelog:
   sort: asc
   filters:
