@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/stretchr/testify v1.10.0
 	github.com/vulcand/oxy v1.4.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -18,7 +19,6 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.6.1 // indirect
 )
 

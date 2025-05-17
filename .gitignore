@@ -34,3 +34,6 @@ go.work.sum
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# GoReleaser
+dist/
