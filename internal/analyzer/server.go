@@ -24,6 +24,9 @@ func (s *Server) Start(addr string) error {
 	http.HandleFunc("/analyzer", s.handleAnalyzer)
 	http.HandleFunc("/openapi.json", s.handleOpenAPI)
 	http.HandleFunc("/postman.json", s.handlePostman)
+	http.HandleFunc("/tools.json", s.handleTools)
+	http.HandleFunc("/tools/openai.json", s.handleOpenAITools)
+	http.HandleFunc("/tools/anthropic.json", s.handleAnthropicTools)
 	http.HandleFunc("/", s.handleSwaggerUI)
 	log.Printf("Analyzer server listening on %s", addr)
 	return http.ListenAndServe(addr, nil)
@@ -74,4 +77,40 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+// handleTools handles requests to the tools specification endpoint
+func (s *Server) handleTools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tools := s.analyzer.GenerateToolsSpec()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tools)
+}
+
+// handleOpenAITools handles requests to the OpenAI tools specification endpoint
+func (s *Server) handleOpenAITools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tools := s.analyzer.GenerateOpenAIToolsSpec()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tools)
+}
+
+// handleAnthropicTools handles requests to the Anthropic tools specification endpoint
+func (s *Server) handleAnthropicTools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tools := s.analyzer.GenerateAnthropicToolsSpec()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tools)
 }
