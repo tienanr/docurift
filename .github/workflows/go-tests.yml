@@ -24,6 +24,9 @@ jobs:
       - name: Run tests
         run: go test ./internal/... -v
 
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
       - name: Run staticcheck
         run: |
           go tool honnef.co/go/tools/cmd/staticcheck ./internal/... ./cmd/...
