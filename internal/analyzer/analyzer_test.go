@@ -416,3 +416,116 @@ func TestProcessJSONPayload(t *testing.T) {
 		})
 	}
 }
+
+func TestSetRedactedFields(t *testing.T) {
+	a := NewAnalyzer()
+	fields := []string{"Authorization", "api_key", "password"}
+	a.SetRedactedFields(fields)
+
+	// Test that fields are properly set
+	for _, field := range fields {
+		if !a.shouldRedact(field) {
+			t.Errorf("Expected field %s to be redacted", field)
+		}
+	}
+
+	// Test case insensitivity
+	if !a.shouldRedact("AUTHORIZATION") {
+		t.Error("Expected case-insensitive redaction")
+	}
+
+	// Test non-redacted field
+	if a.shouldRedact("non-redacted") {
+		t.Error("Expected non-redacted field to not be redacted")
+	}
+}
+
+func TestRedactedFieldsInRequest(t *testing.T) {
+	// Create test request with redacted fields
+	reqBody := map[string]interface{}{
+		"name":     "John Doe",
+		"api_key":  "secret-key-123",
+		"password": "secret123",
+	}
+	reqBodyBytes, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("POST", "https://example.com/api/users?api_key=test-key", bytes.NewBuffer(reqBodyBytes))
+	req.Header.Set("Authorization", "Bearer secret-token")
+	req.Header.Set("X-Custom-Header", "test-value")
+
+	// Create test response
+	respBody := map[string]interface{}{
+		"id":       1,
+		"api_key":  "response-key-456",
+		"name":     "John Doe",
+		"password": "hashed123",
+	}
+	respBodyBytes, _ := json.Marshal(respBody)
+	resp := &http.Response{
+		StatusCode: 200,
+		Header: http.Header{
+			"Authorization":     []string{"Bearer response-token"},
+			"X-Response-Header": []string{"test-value"},
+		},
+		Body: io.NopCloser(bytes.NewBuffer(respBodyBytes)),
+	}
+
+	// Create analyzer and set redacted fields
+	a := NewAnalyzer()
+	a.SetRedactedFields([]string{"Authorization", "api_key", "password"})
+	a.ProcessRequest("POST", "https://example.com/api/users?api_key=test-key", req, resp, reqBodyBytes, respBodyBytes)
+
+	// Get processed data
+	data := a.GetData()
+	key := "POST /api/users"
+	endpoint, exists := data[key]
+
+	if !exists {
+		t.Fatalf("Expected endpoint %s to exist", key)
+	}
+
+	// Verify request headers are redacted
+	authValues := endpoint.RequestHeaders.Examples["Authorization"]
+	if len(authValues) != 1 || authValues[0] != "REDACTED" {
+		t.Error("Expected Authorization header to be redacted")
+	}
+
+	// Verify non-redacted header is preserved
+	customHeaderValues := endpoint.RequestHeaders.Examples["X-Custom-Header"]
+	if len(customHeaderValues) != 1 || customHeaderValues[0] != "test-value" {
+		t.Error("Expected non-redacted header to be preserved")
+	}
+
+	// Verify URL parameters are redacted
+	apiKeyValues := endpoint.URLParameters.Examples["api_key"]
+	if len(apiKeyValues) != 1 || apiKeyValues[0] != "REDACTED" {
+		t.Error("Expected URL parameter api_key to be redacted")
+	}
+
+	// Verify request body fields are redacted
+	if endpoint.RequestPayload.Examples["api_key"][0] != "REDACTED" {
+		t.Error("Expected request body api_key to be redacted")
+	}
+	if endpoint.RequestPayload.Examples["password"][0] != "REDACTED" {
+		t.Error("Expected request body password to be redacted")
+	}
+	if endpoint.RequestPayload.Examples["name"][0] != "John Doe" {
+		t.Error("Expected non-redacted request body field to be preserved")
+	}
+
+	// Verify response headers are redacted
+	responseData := endpoint.ResponseStatuses[200]
+	if responseData.Headers.Examples["Authorization"][0] != "REDACTED" {
+		t.Error("Expected response Authorization header to be redacted")
+	}
+
+	// Verify response body fields are redacted
+	if responseData.Payload.Examples["api_key"][0] != "REDACTED" {
+		t.Error("Expected response body api_key to be redacted")
+	}
+	if responseData.Payload.Examples["password"][0] != "REDACTED" {
+		t.Error("Expected response body password to be redacted")
+	}
+	if responseData.Payload.Examples["name"][0] != "John Doe" {
+		t.Error("Expected non-redacted response body field to be preserved")
+	}
+}

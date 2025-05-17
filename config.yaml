@@ -1,0 +1,7 @@
+proxy:
+    port: 9876
+    backend-url: http://localhost:8080
+
+analyzer:
+    port: 9877
+    max-examples: 10

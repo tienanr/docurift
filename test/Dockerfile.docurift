@@ -12,10 +12,14 @@ RUN go mod download
 # Copy the DocuRift source code
 COPY ../../cmd/docurift ./cmd/docurift
 COPY ../../internal/analyzer ./internal/analyzer
+COPY ../../internal/config ./internal/config
 
 # Build DocuRift
 RUN go build -o docurift ./cmd/docurift
 
+# Copy config file
+COPY test/config.yaml /app/config.yaml
+
 EXPOSE 9876 9877
 
-CMD ["/app/docurift", "-proxy-port", "9876", "-analyzer-port", "9877", "-backend-url", "http://backend:8080", "-max-examples", "20"] 
+CMD ["/app/docurift", "-config", "/app/config.yaml"] 

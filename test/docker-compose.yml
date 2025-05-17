@@ -24,7 +24,7 @@ services:
     environment:
       - CONFIG_PATH=/app/config.yaml
     volumes:
-      - ../config.yaml:/app/config.yaml:ro
+      - ./config.yaml:/app/config.yaml:ro
     networks:
       - docurift-network
     healthcheck:

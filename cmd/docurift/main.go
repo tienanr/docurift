@@ -12,13 +12,8 @@ import (
 	"os"
 
 	"github.com/tienanr/docurift/internal/analyzer"
+	"github.com/tienanr/docurift/internal/config"
 	"github.com/vulcand/oxy/forward"
-)
-
-const (
-	// Port range constants
-	MinPort = 1024
-	MaxPort = 65535
 )
 
 var (
@@ -46,26 +41,12 @@ func (w *customResponseWriter) Write(b []byte) (int, error) {
 
 func printUsage() {
 	fmt.Printf("DocuRift - Automatic API Documentation Generator\n\n")
-	fmt.Printf("Usage: docurift [options]\n\n")
+	fmt.Printf("Usage: docurift -config <config-file>\n\n")
 	fmt.Printf("Options:\n")
-	fmt.Printf("  -proxy-port int        Proxy server port (default 9876)\n")
-	fmt.Printf("  -analyzer-port int     Analyzer server port (default 9877)\n")
-	fmt.Printf("  -backend-url string    Backend API URL (default http://localhost:8080)\n")
-	fmt.Printf("  -max-examples int      Maximum number of examples per endpoint (default 10)\n")
-	fmt.Printf("  -version              Show version information\n")
+	fmt.Printf("  -config string    Path to configuration file (required)\n")
+	fmt.Printf("  -version         Show version information\n")
 	fmt.Printf("\nExample:\n")
-	fmt.Printf("  docurift -proxy-port 9876 -analyzer-port 9877 -backend-url http://localhost:8080 -max-examples 20\n")
-}
-
-// validatePort checks if a port is within the valid range
-func validatePort(port int, service string) error {
-	if port < MinPort {
-		return fmt.Errorf("%s port %d is below minimum allowed port (%d)", service, port, MinPort)
-	}
-	if port > MaxPort {
-		return fmt.Errorf("%s port %d is above maximum allowed port (%d)", service, port, MaxPort)
-	}
-	return nil
+	fmt.Printf("  docurift -config config.yaml\n")
 }
 
 // checkPortAvailable checks if a port is available for use
@@ -81,10 +62,7 @@ func checkPortAvailable(port int, service string) error {
 
 func main() {
 	// Define command line flags
-	proxyPort := flag.Int("proxy-port", 9876, "Proxy server port")
-	analyzerPort := flag.Int("analyzer-port", 9877, "Analyzer server port")
-	backendURL := flag.String("backend-url", "http://localhost:8080", "Backend API URL")
-	maxExamples := flag.Int("max-examples", 10, "Maximum number of examples per endpoint")
+	configPath := flag.String("config", "", "Path to configuration file")
 	showVersion := flag.Bool("version", false, "Show version information")
 
 	// Parse flags
@@ -102,45 +80,34 @@ func main() {
 		return
 	}
 
-	// Validate ports
-	if err := validatePort(*proxyPort, "proxy"); err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
-	}
-	if err := validatePort(*analyzerPort, "analyzer"); err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+	// Load configuration
+	if *configPath == "" {
+		log.Fatal("Configuration file path is required")
 	}
 
-	// Check for port conflicts
-	if *proxyPort == *analyzerPort {
-		log.Fatalf("Invalid configuration: proxy port (%d) cannot be the same as analyzer port", *proxyPort)
+	cfg, err := config.LoadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Check if ports are available
-	if err := checkPortAvailable(*proxyPort, "proxy"); err != nil {
+	if err := checkPortAvailable(cfg.Proxy.Port, "proxy"); err != nil {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
-	if err := checkPortAvailable(*analyzerPort, "analyzer"); err != nil {
+	if err := checkPortAvailable(cfg.Analyzer.Port, "analyzer"); err != nil {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Validate other parameters
-	if *backendURL == "" {
-		log.Fatal("Invalid configuration: backend URL is required")
-	}
-	if *maxExamples <= 0 {
-		log.Fatal("Invalid configuration: max examples must be positive")
-	}
-
-	log.Printf("Starting DocuRift with proxy port %d and analyzer port %d", *proxyPort, *analyzerPort)
+	log.Printf("Starting DocuRift with proxy port %d and analyzer port %d", cfg.Proxy.Port, cfg.Analyzer.Port)
 
 	// Initialize analyzer with max examples
 	analyzerInstance := analyzer.NewAnalyzer()
-	analyzerInstance.SetMaxExamples(*maxExamples)
+	analyzerInstance.SetMaxExamples(cfg.Analyzer.MaxExamples)
 	analyzerServer := analyzer.NewServer(analyzerInstance)
 
 	// Start analyzer server in a goroutine
 	go func() {
-		addr := fmt.Sprintf(":%d", *analyzerPort)
+		addr := fmt.Sprintf(":%d", cfg.Analyzer.Port)
 		log.Printf("Starting analyzer server on %s", addr)
 		if err := analyzerServer.Start(addr); err != nil {
 			log.Fatalf("Failed to start analyzer server: %v", err)
@@ -148,7 +115,7 @@ func main() {
 	}()
 
 	// Parse backend URL
-	backendURLParsed, err := url.Parse(*backendURL)
+	backendURLParsed, err := url.Parse(cfg.Proxy.BackendURL)
 	if err != nil {
 		log.Fatalf("Invalid backend URL: %v", err)
 	}
@@ -193,7 +160,7 @@ func main() {
 		)
 	})
 
-	addr := fmt.Sprintf(":%d", *proxyPort)
+	addr := fmt.Sprintf(":%d", cfg.Proxy.Port)
 	log.Printf("Starting proxy server on %s", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("Failed to start proxy server: %v", err)

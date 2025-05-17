@@ -18,6 +18,7 @@ type SchemaStore struct {
 	Examples    map[string][]interface{} // path -> []values
 	Optional    map[string]bool          // path -> isOptional
 	maxExamples int                      // Maximum number of examples to keep per field
+	analyzer    *Analyzer                // Reference to parent analyzer for accessing noExampleFields
 }
 
 // NewSchemaStore creates a new SchemaStore
@@ -29,10 +30,22 @@ func NewSchemaStore() *SchemaStore {
 	}
 }
 
+// SetAnalyzer sets the parent analyzer reference
+func (s *SchemaStore) SetAnalyzer(a *Analyzer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.analyzer = a
+}
+
 // AddValue adds a value to the schema store for a given path
 func (s *SchemaStore) AddValue(path string, value interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// If this is a redacted field, store "REDACTED" instead of the actual value
+	if s.analyzer != nil && s.analyzer.shouldRedact(path) {
+		value = "REDACTED"
+	}
 
 	if _, exists := s.Examples[path]; !exists {
 		s.Examples[path] = make([]interface{}, 0)
@@ -162,16 +175,18 @@ type ResponseData struct {
 
 // Analyzer is the main analyzer structure
 type Analyzer struct {
-	mu          sync.RWMutex
-	endpoints   map[string]*EndpointData // key: method+url
-	maxExamples int                      // Maximum number of examples to keep per field
+	mu             sync.RWMutex
+	endpoints      map[string]*EndpointData // key: method+url
+	maxExamples    int                      // Maximum number of examples to keep per field
+	redactedFields []string                 // Fields to redact in documentation
 }
 
 // NewAnalyzer creates a new Analyzer instance
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
-		endpoints:   make(map[string]*EndpointData),
-		maxExamples: 10, // Default value
+		endpoints:      make(map[string]*EndpointData),
+		maxExamples:    10, // Default value
+		redactedFields: make([]string, 0),
 	}
 }
 
@@ -180,6 +195,25 @@ func (a *Analyzer) SetMaxExamples(max int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.maxExamples = max
+}
+
+// SetRedactedFields sets the list of fields to redact in documentation
+func (a *Analyzer) SetRedactedFields(fields []string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.redactedFields = fields
+}
+
+// shouldRedact checks if a field should be redacted
+func (a *Analyzer) shouldRedact(field string) bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	for _, redactedField := range a.redactedFields {
+		if strings.EqualFold(field, redactedField) {
+			return true
+		}
+	}
+	return false
 }
 
 // Common HTTP headers to exclude from documentation
@@ -208,8 +242,6 @@ var sensitivePatterns = map[string]string{
 	`^[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}$`: "4111-1111-1111-1111",
 	// SSN pattern
 	`^[0-9]{3}[- ]?[0-9]{2}[- ]?[0-9]{4}$`: "123-45-6789",
-	// Password pattern (any string containing "password" or "pass" or "pwd")
-	`(?i).*(password|pass|pwd).*`: "********",
 }
 
 // sanitizeValue replaces sensitive data with dummy values
@@ -308,6 +340,10 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 			URLParameters:    NewSchemaStore(), // Initialize URL parameters store
 			ResponseStatuses: make(map[int]*ResponseData),
 		}
+		// Set analyzer reference for all schema stores
+		endpoint.RequestHeaders.SetAnalyzer(a)
+		endpoint.RequestPayload.SetAnalyzer(a)
+		endpoint.URLParameters.SetAnalyzer(a)
 		a.endpoints[key] = endpoint
 	}
 	a.mu.Unlock()
@@ -347,6 +383,9 @@ func (a *Analyzer) ProcessRequest(method, url string, req *http.Request, resp *h
 			Headers: NewSchemaStore(),
 			Payload: NewSchemaStore(),
 		}
+		// Set analyzer reference for response schema stores
+		responseData.Headers.SetAnalyzer(a)
+		responseData.Payload.SetAnalyzer(a)
 		endpoint.ResponseStatuses[status] = responseData
 	}
 	a.mu.Unlock()

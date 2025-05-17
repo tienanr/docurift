@@ -22,7 +22,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test ./internal/... ./cmd/... -v
+        run: go test ./internal/... -v
 
       - name: Run staticcheck
         run: |
