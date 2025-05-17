@@ -38,7 +38,7 @@ Clone, build and install into $GOBIN ($GOPATH/bin or $HOME/go/bin):
 go install github.com/tienanr/docurift/cmd/docurift@latest
 ```
 
-### Or Using Docker
+### Alternatively you can install via Docker
 
 Pull and run the latest version:
 
@@ -56,6 +56,18 @@ See [docs/configuration.md](docs/configuration.md) for details about config file
 proxy:
     port: 9876
     backend-url: http://localhost:8080
+
+analyzer:
+    port: 9877
+    max-examples: 20
+    redacted-fields:
+        - password
+```
+if you run from docker, use this instead:
+```yaml
+proxy:
+    port: 9876
+    backend-url: http://host.docker.internal:8080
 
 analyzer:
     port: 9877
