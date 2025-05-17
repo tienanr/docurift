@@ -15,6 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
+	honnef.co/go/tools v0.6.1 // indirect
 )
 
 tool honnef.co/go/tools/cmd/staticcheck
