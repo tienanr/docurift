@@ -55,6 +55,11 @@ dockers:
       - cmd/
       - internal/
 
+release:
+  github:
+    owner: tienanr
+    name: docurift
+
 changelog:
   sort: asc
   filters:
@@ -63,8 +68,4 @@ changelog:
       - '^test:'
       - '^ci:'
       - Merge pull request
-      - Merge branch
-
-publish:
-  - provider: github
-    token: ${{ secrets.GITHUB_TOKEN }} 
+      - Merge branch 
