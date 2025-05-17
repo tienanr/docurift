@@ -20,8 +20,9 @@ type Config struct {
 	} `yaml:"proxy"`
 
 	Analyzer struct {
-		Port        int `yaml:"port"`
-		MaxExamples int `yaml:"max-examples"`
+		Port            int      `yaml:"port"`
+		MaxExamples     int      `yaml:"max-examples"`
+		NoExampleFields []string `yaml:"no-example-fields"`
 	} `yaml:"analyzer"`
 }
 

@@ -17,6 +17,9 @@ proxy:
 analyzer:
     port: 9877
     max-examples: 10
+    no-example-fields:
+        - Authorization
+        - api_key
 `
 	tmpfile, err := os.CreateTemp("", "config-*.yaml")
 	if err != nil {
@@ -39,6 +42,7 @@ analyzer:
 	assert.Equal(t, "http://localhost:8080", config.Proxy.BackendURL)
 	assert.Equal(t, 9877, config.Analyzer.Port)
 	assert.Equal(t, 10, config.Analyzer.MaxExamples)
+	assert.Equal(t, []string{"Authorization", "api_key"}, config.Analyzer.NoExampleFields)
 
 	// Test cases for invalid configurations
 	testCases := []struct {
