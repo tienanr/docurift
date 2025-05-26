@@ -37,3 +37,6 @@ Thumbs.db
 
 # GoReleaser
 dist/
+
+# Analyzer
+analyzer.json
