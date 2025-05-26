@@ -5,3 +5,10 @@ proxy:
 analyzer:
     port: 9877
     max-examples: 10
+    redacted-fields:
+        - Authorization
+        - api_key
+        - password
+    storage:
+        path: .
+        frequency: 10
