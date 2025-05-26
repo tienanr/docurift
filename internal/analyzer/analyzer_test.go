@@ -7,22 +7,39 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestNewAnalyzer(t *testing.T) {
-	a := NewAnalyzer()
+	// Test with default values
+	a := NewAnalyzer("", 0)
 	if a == nil {
 		t.Fatal("NewAnalyzer returned nil")
-		return
 	}
 	if a.maxExamples != 10 {
 		t.Errorf("Expected maxExamples to be 10, got %d", a.maxExamples)
 	}
+	if a.storageLocation != "." {
+		t.Errorf("Expected storageLocation to be '.', got %s", a.storageLocation)
+	}
+	if a.storageFrequency != 10 {
+		t.Errorf("Expected storageFrequency to be 10, got %d", a.storageFrequency)
+	}
+
+	// Test with custom values
+	a = NewAnalyzer("/tmp", 5)
+	if a.storageLocation != "/tmp" {
+		t.Errorf("Expected storageLocation to be '/tmp', got %s", a.storageLocation)
+	}
+	if a.storageFrequency != 5 {
+		t.Errorf("Expected storageFrequency to be 5, got %d", a.storageFrequency)
+	}
 }
 
 func TestSetMaxExamples(t *testing.T) {
-	a := NewAnalyzer()
+	a := NewAnalyzer("", 0)
 	a.SetMaxExamples(5)
 	if a.maxExamples != 5 {
 		t.Errorf("Expected maxExamples to be 5, got %d", a.maxExamples)
@@ -136,7 +153,7 @@ func TestProcessRequest(t *testing.T) {
 	}
 
 	// Create analyzer and process request
-	a := NewAnalyzer()
+	a := NewAnalyzer("", 0)
 	a.ProcessRequest("POST", "https://example.com/api/users?page=1", req, resp, reqBodyBytes, respBodyBytes)
 
 	// Get processed data
@@ -419,7 +436,7 @@ func TestProcessJSONPayload(t *testing.T) {
 }
 
 func TestSetRedactedFields(t *testing.T) {
-	a := NewAnalyzer()
+	a := NewAnalyzer("", 0)
 	fields := []string{"Authorization", "api_key", "password"}
 	a.SetRedactedFields(fields)
 
@@ -471,7 +488,7 @@ func TestRedactedFieldsInRequest(t *testing.T) {
 	}
 
 	// Create analyzer and set redacted fields
-	a := NewAnalyzer()
+	a := NewAnalyzer("", 0)
 	a.SetRedactedFields([]string{"Authorization", "api_key", "password"})
 	a.ProcessRequest("POST", "https://example.com/api/users?api_key=test-key", req, resp, reqBodyBytes, respBodyBytes)
 
@@ -539,20 +556,9 @@ func TestPersistence(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Change to temp directory
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current directory: %v", err)
-	}
-	err = os.Chdir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to change directory: %v", err)
-	}
-	defer os.Chdir(originalDir)
-
 	t.Run("Save and Load State", func(t *testing.T) {
-		// Create analyzer and add some data
-		a1 := NewAnalyzer()
+		// Create analyzer with test directory and custom frequency
+		a1 := NewAnalyzer(tmpDir, 1) // Use 1 second for faster testing
 		a1.SetMaxExamples(5)
 		a1.SetRedactedFields([]string{"secret"})
 
@@ -568,7 +574,7 @@ func TestPersistence(t *testing.T) {
 		a1.saveState()
 
 		// Create new analyzer and load state
-		a2 := NewAnalyzer()
+		a2 := NewAnalyzer(tmpDir, 1)
 		a2.loadState()
 
 		// Verify data was loaded correctly
@@ -593,7 +599,7 @@ func TestPersistence(t *testing.T) {
 
 	t.Run("Version Mismatch", func(t *testing.T) {
 		// Create analyzer and add some data
-		a1 := NewAnalyzer()
+		a1 := NewAnalyzer(tmpDir, 1)
 		req := httptest.NewRequest("GET", "https://example.com/test", nil)
 		resp := &http.Response{StatusCode: 200}
 		a1.ProcessRequest("GET", "https://example.com/test", req, resp, nil, nil)
@@ -604,10 +610,10 @@ func TestPersistence(t *testing.T) {
 			Endpoints: a1.GetData(),
 		}
 		jsonData, _ := json.MarshalIndent(state, "", "  ")
-		os.WriteFile("analyzer.json", jsonData, 0644)
+		os.WriteFile(filepath.Join(tmpDir, "analyzer.json"), jsonData, 0644)
 
 		// Create new analyzer and load state
-		a2 := NewAnalyzer()
+		a2 := NewAnalyzer(tmpDir, 1)
 		data := a2.GetData()
 		if len(data) != 0 {
 			t.Error("Expected no endpoints to be loaded due to version mismatch")
@@ -616,10 +622,10 @@ func TestPersistence(t *testing.T) {
 
 	t.Run("Corrupted State File", func(t *testing.T) {
 		// Write invalid JSON
-		os.WriteFile("analyzer.json", []byte("invalid json"), 0644)
+		os.WriteFile(filepath.Join(tmpDir, "analyzer.json"), []byte("invalid json"), 0644)
 
 		// Create new analyzer and load state
-		a := NewAnalyzer()
+		a := NewAnalyzer(tmpDir, 1)
 		data := a.GetData()
 		if len(data) != 0 {
 			t.Error("Expected no endpoints to be loaded from corrupted file")
@@ -627,7 +633,66 @@ func TestPersistence(t *testing.T) {
 	})
 
 	t.Run("Stop Persistence", func(t *testing.T) {
-		a := NewAnalyzer()
+		a := NewAnalyzer(tmpDir, 1)
 		a.Stop() // Should not panic
 	})
+}
+
+func TestPeriodicSave(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "analyzer-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create analyzer with 1-second save frequency
+	a := NewAnalyzer(tmpDir, 1)
+	defer a.Stop()
+
+	// Add some test data
+	req := httptest.NewRequest("GET", "https://example.com/test", nil)
+	resp := &http.Response{StatusCode: 200}
+	a.ProcessRequest("GET", "https://example.com/test", req, resp, nil, nil)
+
+	// Wait for at least one save to occur (1.5 seconds to be safe)
+	time.Sleep(1500 * time.Millisecond)
+
+	// Verify that the state was saved
+	stateFile := filepath.Join(tmpDir, "analyzer.json")
+	if _, err := os.Stat(stateFile); os.IsNotExist(err) {
+		t.Fatal("Expected analyzer.json to be created after 1.5 seconds")
+	}
+
+	// Read and verify the saved state
+	data, err := os.ReadFile(stateFile)
+	if err != nil {
+		t.Fatalf("Failed to read analyzer.json: %v", err)
+	}
+
+	var state PersistedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		t.Fatalf("Failed to unmarshal state: %v", err)
+	}
+
+	if state.Version != SchemaVersion {
+		t.Errorf("Expected version %s, got %s", SchemaVersion, state.Version)
+	}
+
+	if len(state.Endpoints) != 1 {
+		t.Errorf("Expected 1 endpoint, got %d", len(state.Endpoints))
+	}
+
+	endpoint, exists := state.Endpoints["GET /test"]
+	if !exists {
+		t.Fatal("Expected endpoint 'GET /test' to exist in saved state")
+	}
+
+	if endpoint.Method != "GET" {
+		t.Errorf("Expected method GET, got %s", endpoint.Method)
+	}
+
+	if endpoint.URL != "/test" {
+		t.Errorf("Expected URL /test, got %s", endpoint.URL)
+	}
 }
