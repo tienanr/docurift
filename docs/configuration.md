@@ -17,6 +17,9 @@ analyzer:
         - Authorization
         - api_key
         - password
+    storage:
+        path: .
+        frequency: 10
 ```
 
 The configuration file controls DocuRift's behavior:
@@ -29,3 +32,7 @@ The configuration file controls DocuRift's behavior:
 - `port`: The port number for DocuRift's analyzer API endpoint (e.g. 9877)
 - `max-examples`: Maximum number of example values to store for each field in the schema
 - `redacted-fields`: A list of the fields to redact in the documentation. Their values will be shown as "REDACTED" (e.g. authorization header or api_keys that you don't want to expose in the doc) 
+
+- `storage.path`: The directory path where DocuRift will store its analyzer state file (analyzer.json). Defaults to current directory if not specified.
+- `storage.frequency`: How often (in seconds) DocuRift should save its state to disk. Defaults to 10 seconds if not specified.
+

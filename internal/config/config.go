@@ -22,7 +22,12 @@ type Config struct {
 	Analyzer struct {
 		Port            int      `yaml:"port"`
 		MaxExamples     int      `yaml:"max-examples"`
+		RedactedFields  []string `yaml:"redacted-fields"`
 		NoExampleFields []string `yaml:"no-example-fields"`
+		Storage         struct {
+			Path      string `yaml:"path"`
+			Frequency int    `yaml:"frequency"`
+		} `yaml:"storage"`
 	} `yaml:"analyzer"`
 }
 
@@ -67,6 +72,14 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	if config.Analyzer.MaxExamples <= 0 {
 		return nil, fmt.Errorf("max-examples must be greater than 0")
+	}
+
+	// Set defaults for storage if not specified
+	if config.Analyzer.Storage.Path == "" {
+		config.Analyzer.Storage.Path = "."
+	}
+	if config.Analyzer.Storage.Frequency <= 0 {
+		config.Analyzer.Storage.Frequency = 10
 	}
 
 	return &config, nil
