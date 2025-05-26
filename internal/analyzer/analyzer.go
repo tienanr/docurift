@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -178,11 +179,13 @@ type ResponseData struct {
 
 // Analyzer is the main analyzer structure
 type Analyzer struct {
-	mu             sync.RWMutex
-	endpoints      map[string]*EndpointData // key: method+url
-	maxExamples    int                      // Maximum number of examples to keep per field
-	redactedFields []string                 // Fields to redact in documentation
-	stopChan       chan struct{}            // Channel to signal stop for persistence goroutine
+	mu               sync.RWMutex
+	endpoints        map[string]*EndpointData // key: method+url
+	maxExamples      int                      // Maximum number of examples to keep per field
+	redactedFields   []string                 // Fields to redact in documentation
+	stopChan         chan struct{}            // Channel to signal stop for persistence goroutine
+	storageLocation  string                   // Path where analyzer.json is stored
+	storageFrequency int                      // Frequency of state persistence in seconds
 }
 
 // SchemaVersion represents the current version of the analyzer schema
@@ -195,12 +198,22 @@ type PersistedState struct {
 }
 
 // NewAnalyzer creates a new Analyzer instance
-func NewAnalyzer() *Analyzer {
+func NewAnalyzer(storageLocation string, storageFrequency int) *Analyzer {
+	// Set default values if not provided
+	if storageLocation == "" {
+		storageLocation = "."
+	}
+	if storageFrequency <= 0 {
+		storageFrequency = 10
+	}
+
 	a := &Analyzer{
-		endpoints:      make(map[string]*EndpointData),
-		maxExamples:    10, // Default value
-		redactedFields: make([]string, 0),
-		stopChan:       make(chan struct{}),
+		endpoints:        make(map[string]*EndpointData),
+		maxExamples:      10, // Default value
+		redactedFields:   make([]string, 0),
+		stopChan:         make(chan struct{}),
+		storageLocation:  storageLocation,
+		storageFrequency: storageFrequency,
 	}
 
 	// Load existing data if available
@@ -212,9 +225,9 @@ func NewAnalyzer() *Analyzer {
 	return a
 }
 
-// startPersistence starts a goroutine that saves the analyzer state every 10 seconds
+// startPersistence starts a goroutine that saves the analyzer state periodically
 func (a *Analyzer) startPersistence() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(time.Duration(a.storageFrequency) * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -241,7 +254,8 @@ func (a *Analyzer) saveState() {
 		return
 	}
 
-	err = os.WriteFile("analyzer.json", jsonData, 0644)
+	filePath := filepath.Join(a.storageLocation, "analyzer.json")
+	err = os.WriteFile(filePath, jsonData, 0644)
 	if err != nil {
 		return
 	}
@@ -249,10 +263,11 @@ func (a *Analyzer) saveState() {
 
 // loadState loads the analyzer state from analyzer.json if it exists and version matches
 func (a *Analyzer) loadState() {
-	data, err := os.ReadFile("analyzer.json")
+	filePath := filepath.Join(a.storageLocation, "analyzer.json")
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("[INFO] No saved state found at analyzer.json")
+			log.Printf("[INFO] No saved state found at %s", filePath)
 		}
 		return
 	}
