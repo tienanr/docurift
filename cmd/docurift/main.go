@@ -101,7 +101,7 @@ func main() {
 	log.Printf("Starting DocuRift with proxy port %d and analyzer port %d", cfg.Proxy.Port, cfg.Analyzer.Port)
 
 	// Initialize analyzer with max examples
-	analyzerInstance := analyzer.NewAnalyzer()
+	analyzerInstance := analyzer.NewAnalyzer(".", 10) // Use default values: current directory and 10 seconds
 	analyzerInstance.SetMaxExamples(cfg.Analyzer.MaxExamples)
 	analyzerServer := analyzer.NewServer(analyzerInstance)
 
