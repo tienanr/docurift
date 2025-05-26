@@ -5,11 +5,14 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // SchemaStore represents a store for tracking JSON schema paths and their values
@@ -179,15 +182,100 @@ type Analyzer struct {
 	endpoints      map[string]*EndpointData // key: method+url
 	maxExamples    int                      // Maximum number of examples to keep per field
 	redactedFields []string                 // Fields to redact in documentation
+	stopChan       chan struct{}            // Channel to signal stop for persistence goroutine
+}
+
+// SchemaVersion represents the current version of the analyzer schema
+const SchemaVersion = "1.0"
+
+// PersistedState represents the structure of the saved analyzer state
+type PersistedState struct {
+	Version   string                   `json:"version"`
+	Endpoints map[string]*EndpointData `json:"endpoints"`
 }
 
 // NewAnalyzer creates a new Analyzer instance
 func NewAnalyzer() *Analyzer {
-	return &Analyzer{
+	a := &Analyzer{
 		endpoints:      make(map[string]*EndpointData),
 		maxExamples:    10, // Default value
 		redactedFields: make([]string, 0),
+		stopChan:       make(chan struct{}),
 	}
+
+	// Load existing data if available
+	a.loadState()
+
+	// Start persistence goroutine
+	go a.startPersistence()
+
+	return a
+}
+
+// startPersistence starts a goroutine that saves the analyzer state every 10 seconds
+func (a *Analyzer) startPersistence() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			a.saveState()
+		case <-a.stopChan:
+			return
+		}
+	}
+}
+
+// saveState saves the current state of the analyzer to analyzer.json
+func (a *Analyzer) saveState() {
+	a.mu.RLock()
+	state := PersistedState{
+		Version:   SchemaVersion,
+		Endpoints: a.endpoints,
+	}
+	a.mu.RUnlock()
+
+	jsonData, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return
+	}
+
+	err = os.WriteFile("analyzer.json", jsonData, 0644)
+	if err != nil {
+		return
+	}
+}
+
+// loadState loads the analyzer state from analyzer.json if it exists and version matches
+func (a *Analyzer) loadState() {
+	data, err := os.ReadFile("analyzer.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("[INFO] No saved state found at analyzer.json")
+		}
+		return
+	}
+
+	var state PersistedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return
+	}
+
+	// Only load if version matches
+	if state.Version != SchemaVersion {
+		log.Printf("[INFO] Saved state version mismatch: found %s, expected %s", state.Version, SchemaVersion)
+		return
+	}
+
+	a.mu.Lock()
+	a.endpoints = state.Endpoints
+	a.mu.Unlock()
+}
+
+// Stop stops the persistence goroutine
+func (a *Analyzer) Stop() {
+	close(a.stopChan)
 }
 
 // SetMaxExamples sets the maximum number of examples to keep per field

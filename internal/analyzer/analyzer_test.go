@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -528,4 +529,105 @@ func TestRedactedFieldsInRequest(t *testing.T) {
 	if responseData.Payload.Examples["name"][0] != "John Doe" {
 		t.Error("Expected non-redacted response body field to be preserved")
 	}
+}
+
+func TestPersistence(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "analyzer-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Change to temp directory
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	t.Run("Save and Load State", func(t *testing.T) {
+		// Create analyzer and add some data
+		a1 := NewAnalyzer()
+		a1.SetMaxExamples(5)
+		a1.SetRedactedFields([]string{"secret"})
+
+		// Add some test data
+		req := httptest.NewRequest("GET", "https://example.com/test", nil)
+		resp := &http.Response{
+			StatusCode: 200,
+			Header:     http.Header{"X-Test": []string{"value"}},
+		}
+		a1.ProcessRequest("GET", "https://example.com/test", req, resp, nil, nil)
+
+		// Save state
+		a1.saveState()
+
+		// Create new analyzer and load state
+		a2 := NewAnalyzer()
+		a2.loadState()
+
+		// Verify data was loaded correctly
+		data := a2.GetData()
+		if len(data) != 1 {
+			t.Errorf("Expected 1 endpoint, got %d", len(data))
+		}
+
+		endpoint, exists := data["GET /test"]
+		if !exists {
+			t.Fatal("Expected endpoint 'GET /test' to exist")
+		}
+
+		if endpoint.Method != "GET" {
+			t.Errorf("Expected method GET, got %s", endpoint.Method)
+		}
+
+		if endpoint.URL != "/test" {
+			t.Errorf("Expected URL /test, got %s", endpoint.URL)
+		}
+	})
+
+	t.Run("Version Mismatch", func(t *testing.T) {
+		// Create analyzer and add some data
+		a1 := NewAnalyzer()
+		req := httptest.NewRequest("GET", "https://example.com/test", nil)
+		resp := &http.Response{StatusCode: 200}
+		a1.ProcessRequest("GET", "https://example.com/test", req, resp, nil, nil)
+
+		// Save state with modified version
+		state := PersistedState{
+			Version:   "0.9", // Different from current SchemaVersion
+			Endpoints: a1.GetData(),
+		}
+		jsonData, _ := json.MarshalIndent(state, "", "  ")
+		os.WriteFile("analyzer.json", jsonData, 0644)
+
+		// Create new analyzer and load state
+		a2 := NewAnalyzer()
+		data := a2.GetData()
+		if len(data) != 0 {
+			t.Error("Expected no endpoints to be loaded due to version mismatch")
+		}
+	})
+
+	t.Run("Corrupted State File", func(t *testing.T) {
+		// Write invalid JSON
+		os.WriteFile("analyzer.json", []byte("invalid json"), 0644)
+
+		// Create new analyzer and load state
+		a := NewAnalyzer()
+		data := a.GetData()
+		if len(data) != 0 {
+			t.Error("Expected no endpoints to be loaded from corrupted file")
+		}
+	})
+
+	t.Run("Stop Persistence", func(t *testing.T) {
+		a := NewAnalyzer()
+		a.Stop() // Should not panic
+	})
 }
