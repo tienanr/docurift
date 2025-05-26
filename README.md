@@ -62,6 +62,9 @@ analyzer:
     max-examples: 20
     redacted-fields:
         - password
+    storage:
+        path: .
+        frequency: 10
 ```
 if you run from docker, use this instead:
 ```yaml
@@ -74,6 +77,9 @@ analyzer:
     max-examples: 20
     redacted-fields:
         - password
+    storage:
+        path: /etc/docurift/
+        frequency: 10
 ```
 
 2. Start DocuRift with your configuration:
@@ -82,7 +88,7 @@ docurift -config config.yaml
 ```
 or
 ```bash
-docker run -p 9876:9876 -p 9877:9877 -v $(pwd)/config.yaml:/etc/docurift/config.yaml ghcr.io/tienanr/docurift:latest
+docker run -p 9876:9876 -p 9877:9877 -v $(pwd)/config-docker.yaml:/etc/docurift/config.yaml ghcr.io/tienanr/docurift:latest
 ```
 
 3. Clone the examples repository to test DocuRift:
@@ -103,6 +109,8 @@ go test -count=1 .
 
 5. Get open API spec: http://localhost:9877/openapi.json and Postman Collection: http://localhost:9877/postman.json
 
+6. Check the local folder for `analyzer.json` file, which is persisted every 10 seconds while analyzer is running, the next analyzer run wil pick up any stored state. For docker usages, add proper mount to expose `analyzer.json` to load persisted state.
+
 ## Configuration
 
 DocuRift uses a YAML configuration file to control its behavior. Here's the complete configuration reference:
@@ -115,7 +123,8 @@ DocuRift uses a YAML configuration file to control its behavior. Here's the comp
 - `port`: The port number for DocuRift's analyzer API endpoint (e.g. 9877)
 - `max-examples`: Maximum number of example values to store for each field in the schema
 - `redacted-fields`: A list of fields to redact in the documentation. Their values will be shown as "REDACTED" (e.g. authorization headers, API keys, passwords). This applies globally to HTTP headers, URL parameters and JSON fields.
-
+- `storage.path`: The directory path where DocuRift will store its analyzer state file (analyzer.json). Defaults to current directory if not specified.
+- `storage.frequency`: How often (in seconds) DocuRift should save its state to disk. Defaults to 10 seconds if not specified.
 
 Example configuration:
 ```yaml
@@ -126,6 +135,13 @@ proxy:
 analyzer:
     port: 9877
     max-examples: 10
+    redacted-fields:
+        - Authorization
+        - api_key
+        - password
+    storage:
+        path: .
+        frequency: 10
 ```
 
 ## Examples
