@@ -104,6 +104,8 @@ func main() {
 	analyzerInstance := analyzer.NewAnalyzer(cfg.Analyzer.Storage.Path, cfg.Analyzer.Storage.Frequency)
 	analyzerInstance.SetMaxExamples(cfg.Analyzer.MaxExamples)
 	analyzerInstance.SetRedactedFields(cfg.Analyzer.RedactedFields)
+	analyzerInstance.SetProxyConfig(cfg.Proxy.Port, cfg.Proxy.BackendURL)
+	analyzerInstance.SetAnalyzerPort(cfg.Analyzer.Port)
 	analyzerServer := analyzer.NewServer(analyzerInstance)
 
 	// Start analyzer server in a goroutine

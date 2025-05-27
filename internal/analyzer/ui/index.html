@@ -54,6 +54,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" data-section="postman">Postman</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="config">Config</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -110,6 +113,54 @@
                     <a href="/api/postman.json" class="btn btn-primary" download="api-collection.json">
                         Download Collection
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Section -->
+        <div id="config" class="section d-none">
+            <div class="row">
+                <!-- Proxy Config -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Proxy Configuration</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="proxy-config-content">
+                                        <!-- Proxy config rows will be added here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Analyzer Config -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Analyzer Configuration</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="analyzer-config-content">
+                                        <!-- Analyzer config rows will be added here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,14 +232,78 @@
             }
         }
 
+        // Fetch and display config data
+        async function updateConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                
+                // Helper function to format value
+                const formatValue = (value) => {
+                    if (Array.isArray(value)) {
+                        return value.length > 0 ? value.join(', ') : '(empty)';
+                    }
+                    if (typeof value === 'object') {
+                        return JSON.stringify(value);
+                    }
+                    return value;
+                };
+
+                // Helper function to format key
+                const formatKey = (key) => {
+                    // Handle common acronyms
+                    const acronyms = ['URL', 'API', 'ID', 'UUID'];
+                    let formatted = key;
+                    
+                    // First, add spaces before capital letters that aren't part of acronyms
+                    formatted = formatted.replace(/([a-z])([A-Z])/g, '$1 $2');
+                    
+                    // Capitalize first letter
+                    formatted = formatted.replace(/^./, str => str.toUpperCase());
+                    
+                    // Ensure acronyms are properly spaced
+                    acronyms.forEach(acronym => {
+                        const regex = new RegExp(`([a-z])${acronym}`, 'i');
+                        formatted = formatted.replace(regex, `$1 ${acronym}`);
+                    });
+                    
+                    return formatted;
+                };
+
+                // Helper function to create table rows
+                const createTableRows = (data, tbodyId) => {
+                    const tbody = document.getElementById(tbodyId);
+                    tbody.innerHTML = '';
+                    Object.entries(data).forEach(([key, value]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong>${formatKey(key)}</strong></td>
+                            <td>${formatValue(value)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                };
+
+                // Update proxy config
+                createTableRows(data.proxy, 'proxy-config-content');
+                
+                // Update analyzer config
+                createTableRows(data.analyzer, 'analyzer-config-content');
+            } catch (error) {
+                console.error('Error fetching config data:', error);
+            }
+        }
+
         // Initial load
         updateDashboard();
         updateAnalyzer();
+        updateConfig();
 
         // Refresh data every 30 seconds
         setInterval(() => {
             updateDashboard();
             updateAnalyzer();
+            updateConfig();
         }, 30000);
     </script>
 </body>

@@ -186,6 +186,9 @@ type Analyzer struct {
 	stopChan         chan struct{}            // Channel to signal stop for persistence goroutine
 	storageLocation  string                   // Path where analyzer.json is stored
 	storageFrequency int                      // Frequency of state persistence in seconds
+	proxyPort        int                      // Proxy server port
+	backendURL       string                   // Backend URL for proxy
+	analyzerPort     int                      // Analyzer server port
 }
 
 // SchemaVersion represents the current version of the analyzer schema
@@ -580,4 +583,55 @@ func (a *Analyzer) GetData() map[string]*EndpointData {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.endpoints
+}
+
+// GetConfig returns the current configuration of the analyzer
+func (a *Analyzer) GetConfig() map[string]interface{} {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	return map[string]interface{}{
+		"maxExamples":      a.maxExamples,
+		"redactedFields":   a.redactedFields,
+		"storageLocation":  a.storageLocation,
+		"storageFrequency": a.storageFrequency,
+		"endpointCount":    len(a.endpoints),
+		"port":             a.analyzerPort,
+	}
+}
+
+// SetProxyConfig sets the proxy configuration
+func (a *Analyzer) SetProxyConfig(port int, backendURL string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.proxyPort = port
+	a.backendURL = backendURL
+}
+
+// GetProxyPort returns the proxy port
+func (a *Analyzer) GetProxyPort() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.proxyPort
+}
+
+// GetBackendURL returns the backend URL
+func (a *Analyzer) GetBackendURL() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.backendURL
+}
+
+// SetAnalyzerPort sets the analyzer port
+func (a *Analyzer) SetAnalyzerPort(port int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.analyzerPort = port
+}
+
+// GetAnalyzerPort returns the analyzer port
+func (a *Analyzer) GetAnalyzerPort() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.analyzerPort
 }

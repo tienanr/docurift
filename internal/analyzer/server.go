@@ -28,6 +28,7 @@ func (s *Server) Start(addr string) error {
 	http.HandleFunc("/api/analyzer", s.handleAnalyzer)
 	http.HandleFunc("/api/openapi.json", s.handleOpenAPI)
 	http.HandleFunc("/api/postman.json", s.handlePostman)
+	http.HandleFunc("/api/config", s.handleConfig)
 	http.HandleFunc("/swagger", s.handleSwaggerUI)
 
 	// Handle OPTIONS requests for CORS
@@ -131,4 +132,36 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+// handleConfig handles requests to the config endpoint
+func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Add CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// Get analyzer config
+	analyzerConfig := s.analyzer.GetConfig()
+
+	// Create combined config
+	config := map[string]interface{}{
+		"analyzer": analyzerConfig,
+		"proxy": map[string]interface{}{
+			"port":       s.analyzer.GetProxyPort(),
+			"backendURL": s.analyzer.GetBackendURL(),
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		log.Printf("Error encoding config: %v", err)
+		http.Error(w, "Error encoding config", http.StatusInternalServerError)
+		return
+	}
 }
