@@ -40,15 +40,6 @@ func doPost(t *testing.T, path string, body any) *http.Response {
 	return resp
 }
 
-func doDelete(t *testing.T, path string) *http.Response {
-	req, _ := http.NewRequest(http.MethodDelete, baseURL+path, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("DELETE %s failed: %v", path, err)
-	}
-	return resp
-}
-
 // --- Test Cases ---
 
 func TestGetProducts(t *testing.T) {
