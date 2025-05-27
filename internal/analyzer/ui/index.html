@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="DocuRift API Documentation" />
+    <title>DocuRift</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        .nav-link.active {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+        .json-viewer {
+            background-color: #1e1e1e;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .endpoint-card {
+            margin-bottom: 1rem;
+        }
+        .endpoint-method {
+            font-weight: bold;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+        .method-get { background-color: #61affe; color: white; }
+        .method-post { background-color: #49cc90; color: white; }
+        .method-put { background-color: #fca130; color: white; }
+        .method-delete { background-color: #f93e3e; color: white; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">DocuRift</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="swagger">Swagger UI</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="analyzer">Analyzer</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="postman">Postman</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Documented Endpoints</h5>
+                            <h2 id="endpoint-count" class="display-4">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Recent Activity</h5>
+                            <div id="recent-activity" class="list-group">
+                                <!-- Activity items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Swagger UI Section -->
+        <div id="swagger" class="section d-none">
+            <iframe id="swagger-frame" style="width: 100%; height: 800px; border: none;" src="/swagger"></iframe>
+        </div>
+
+        <!-- Analyzer Section -->
+        <div id="analyzer" class="section d-none">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">API Analysis</h5>
+                    <div id="analyzer-content" class="json-viewer">
+                        <pre><code class="language-json"></code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Postman Section -->
+        <div id="postman" class="section d-none">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Postman Collection</h5>
+                    <p>Download the Postman collection for this API:</p>
+                    <a href="/api/postman.json" class="btn btn-primary" download="api-collection.json">
+                        Download Collection
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+    <script>
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.target.dataset.section;
+                
+                // Update active state
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Show selected section
+                document.querySelectorAll('.section').forEach(s => s.classList.add('d-none'));
+                document.getElementById(section).classList.remove('d-none');
+            });
+        });
+
+        // Fetch and display endpoint count
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/analyzer');
+                const data = await response.json();
+                
+                // Update endpoint count
+                const endpointCount = Object.keys(data).length;
+                document.getElementById('endpoint-count').textContent = endpointCount;
+                
+                // Update recent activity
+                const activityList = document.getElementById('recent-activity');
+                activityList.innerHTML = '';
+                
+                Object.entries(data).slice(0, 5).forEach(([key, endpoint]) => {
+                    const [method, path] = key.split(' ');
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item';
+                    item.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                <span class="endpoint-method method-${method.toLowerCase()}">${method}</span>
+                                ${path}
+                            </h6>
+                        </div>
+                    `;
+                    activityList.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error fetching analyzer data:', error);
+            }
+        }
+
+        // Fetch and display analyzer data
+        async function updateAnalyzer() {
+            try {
+                const response = await fetch('/api/analyzer');
+                const data = await response.json();
+                const codeElement = document.querySelector('#analyzer-content code');
+                codeElement.textContent = JSON.stringify(data, null, 2);
+                Prism.highlightElement(codeElement);
+            } catch (error) {
+                console.error('Error fetching analyzer data:', error);
+            }
+        }
+
+        // Initial load
+        updateDashboard();
+        updateAnalyzer();
+
+        // Refresh data every 30 seconds
+        setInterval(() => {
+            updateDashboard();
+            updateAnalyzer();
+        }, 30000);
+    </script>
+</body>
+</html>

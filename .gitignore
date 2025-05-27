@@ -40,7 +40,6 @@ dist/
 
 # Analyzer
 analyzer.json
-internal/analyzer/ui/
 
 # Node.js
 node_modules/
