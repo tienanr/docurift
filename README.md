@@ -105,9 +105,8 @@ sleep 3
 go test -count=1 .
 ```
 
-4. Access your automatically generated documentation at http://localhost:9877/ (Swagger UI)
-
-5. Get open API spec: http://localhost:9877/openapi.json and Postman Collection: http://localhost:9877/postman.json
+4. Access your automatically generated documentation via DocuRift UI (http://localhost:9877/), both Open API spec and Postman Collection downloads are available.
+![Screenshot](assets/images/DocuRift.png)
 
 6. Check the local folder for `analyzer.json` file, which is persisted every 10 seconds while analyzer is running, the next analyzer run wil pick up any stored state. For docker usages, add proper mount to expose `analyzer.json` to load persisted state.
 

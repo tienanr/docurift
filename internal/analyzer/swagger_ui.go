@@ -21,7 +21,7 @@ const swaggerUITemplate = `<!DOCTYPE html>
 <script>
     window.onload = () => {
         window.ui = SwaggerUIBundle({
-            url: "/openapi.json",
+            url: "/api/openapi.json",
             dom_id: '#swagger-ui',
             deepLinking: true,
             presets: [
