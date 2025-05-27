@@ -16,7 +16,7 @@ until curl -s "${BACKEND_URL}/health" > /dev/null; do
 done
 
 # Wait for docurift
-until curl -s "${ANALYZER_URL}/openapi.json" > /dev/null; do
+until curl -s "${ANALYZER_URL}/api/openapi.json" > /dev/null; do
     echo "Waiting for docurift..."
     sleep 1
 done
@@ -29,7 +29,7 @@ go test -v ./shop
 echo "Fetching OpenAPI specification..."
 
 # Fetch OpenAPI spec
-curl -s "${ANALYZER_URL}/openapi.json" > /tmp/openapi.json
+curl -s "${ANALYZER_URL}/api/openapi.json" > /tmp/openapi.json
 
 # Basic validation
 if ! jq -e '.openapi' /tmp/openapi.json > /dev/null; then
