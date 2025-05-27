@@ -7,55 +7,176 @@
     <title>DocuRift</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --info-color: #0dcaf0;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: 0.375rem;
+            margin: 0 0.25rem;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255,255,255,.1);
+        }
+
         .nav-link.active {
-            background-color: #0d6efd !important;
+            background-color: var(--primary-color) !important;
             color: white !important;
         }
-        .json-viewer {
-            background-color: #1e1e1e;
-            border-radius: 4px;
-            padding: 1rem;
-            margin: 1rem 0;
+
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+            transition: transform 0.2s ease-in-out;
         }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+
         .endpoint-card {
             margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color);
         }
+
         .endpoint-method {
             font-weight: bold;
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
             margin-right: 0.5rem;
+            font-size: 0.875rem;
         }
+
         .method-get { background-color: #61affe; color: white; }
         .method-post { background-color: #49cc90; color: white; }
         .method-put { background-color: #fca130; color: white; }
         .method-delete { background-color: #f93e3e; color: white; }
+
+        .json-viewer {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .btn-primary {
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+        }
+
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+            padding: 1rem;
+        }
+
+        .list-group-item:first-child {
+            border-top: none;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        .display-4 {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        #swagger-frame {
+            border-radius: 8px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+        }
+
+        .section {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">DocuRift</a>
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-file-earmark-text"></i> DocuRift
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" data-section="dashboard">Dashboard</a>
+                        <a class="nav-link active" href="#" data-section="dashboard">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="swagger">Swagger UI</a>
+                        <a class="nav-link" href="#" data-section="swagger">
+                            <i class="bi bi-file-earmark-code"></i> Swagger UI
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="analyzer">Analyzer</a>
+                        <a class="nav-link" href="#" data-section="analyzer">
+                            <i class="bi bi-graph-up"></i> Analyzer
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="postman">Postman</a>
+                        <a class="nav-link" href="#" data-section="postman">
+                            <i class="bi bi-box"></i> Postman
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="config">Config</a>
+                        <a class="nav-link" href="#" data-section="config">
+                            <i class="bi bi-gear"></i> Config
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -69,7 +190,9 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Documented Endpoints</h5>
+                            <h5 class="card-title">
+                                <i class="bi bi-hash"></i> Documented Endpoints
+                            </h5>
                             <h2 id="endpoint-count" class="display-4">0</h2>
                         </div>
                     </div>
@@ -77,7 +200,9 @@
                 <div class="col-md-8">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Recent Activity</h5>
+                            <h5 class="card-title">
+                                <i class="bi bi-clock-history"></i> Recent Activity
+                            </h5>
                             <div id="recent-activity" class="list-group">
                                 <!-- Activity items will be added here -->
                             </div>
@@ -96,7 +221,9 @@
         <div id="analyzer" class="section d-none">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">API Analysis</h5>
+                    <h5 class="card-title">
+                        <i class="bi bi-graph-up"></i> API Analysis
+                    </h5>
                     <div id="analyzer-content" class="json-viewer">
                         <pre><code class="language-json"></code></pre>
                     </div>
@@ -108,10 +235,12 @@
         <div id="postman" class="section d-none">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Postman Collection</h5>
+                    <h5 class="card-title">
+                        <i class="bi bi-box"></i> Postman Collection
+                    </h5>
                     <p>Download the Postman collection for this API:</p>
                     <a href="/api/postman.json" class="btn btn-primary" download="api-collection.json">
-                        Download Collection
+                        <i class="bi bi-download"></i> Download Collection
                     </a>
                 </div>
             </div>
@@ -124,7 +253,9 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Proxy Configuration</h5>
+                            <h5 class="card-title">
+                                <i class="bi bi-hdd-network"></i> Proxy Configuration
+                            </h5>
                             <div class="table-responsive">
                                 <table class="table table-striped">
                                     <thead>
@@ -145,7 +276,9 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Analyzer Configuration</h5>
+                            <h5 class="card-title">
+                                <i class="bi bi-gear"></i> Analyzer Configuration
+                            </h5>
                             <div class="table-responsive">
                                 <table class="table table-striped">
                                     <thead>
@@ -174,11 +307,11 @@
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const section = e.target.dataset.section;
+                const section = e.target.closest('.nav-link').dataset.section;
                 
                 // Update active state
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                e.target.classList.add('active');
+                e.target.closest('.nav-link').classList.add('active');
                 
                 // Show selected section
                 document.querySelectorAll('.section').forEach(s => s.classList.add('d-none'));
@@ -210,6 +343,7 @@
                                 <span class="endpoint-method method-${method.toLowerCase()}">${method}</span>
                                 ${path}
                             </h6>
+                            <small class="text-muted">${new Date().toLocaleTimeString()}</small>
                         </div>
                     `;
                     activityList.appendChild(item);
