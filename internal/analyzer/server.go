@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -44,7 +42,7 @@ func (s *Server) Start(addr string) error {
 	})
 
 	// Serve static UI files
-	fs := http.FileServer(http.Dir("internal/analyzer/ui"))
+	fs := http.FileServer(getUIFileSystem())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// If the request is for an API endpoint, return 404
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -54,10 +52,9 @@ func (s *Server) Start(addr string) error {
 
 		// For all other requests, serve the UI
 		// If the path doesn't exist, serve index.html for client-side routing
-		path := filepath.Join("internal/analyzer/ui", r.URL.Path)
-		if _, err := os.Stat(path); err != nil {
-			http.ServeFile(w, r, "internal/analyzer/ui/index.html")
-			return
+		path := r.URL.Path
+		if path == "/" {
+			path = "/index.html"
 		}
 		fs.ServeHTTP(w, r)
 	})
